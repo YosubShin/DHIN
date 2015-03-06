@@ -42,67 +42,88 @@ object SimpleApp {
     var venueFile = "data/dblp_hin/venue_key.txt"
     var termFile = "data/dblp_hin/term_key.txt"
     var paperFile = "data/dblp_hin/paper_key.txt"
+    val confLabelFile = "data/DBLP_four_area/conf_label.txt"
+    val authorLabelFile = "data/DBLP_four_area/author_label.txt"
+    val termLabelFile = "data/DBLP_four_area/term_label.txt"
+    val paperLabelFile = "data/DBLP_four_area/paper_label.txt"
     //.partitionBy(PartitionStrategy.EdgePartition2D)
+
     val numPartitions = 16
     val numTop = 100
-
-
     var graph: Graph[Int, Int] = GraphLoader.edgeListFile(sc, edgeFile, numEdgePartitions=numPartitions).cache()
     println(s"*Edges: ${graph.edges.count}")
     println(s"Vertices: ${graph.vertices.count}")
 
-    println(graph.edges.partitions.length)
-    println(graph.vertices.partitions.length)
-
-
-    val labeledList = "data/DBLP_four_area/conf_label.txt"
-
-
-    val confLabel = VertexRDD(sc.textFile(labeledList).map(a=>{
+    val confLabel = VertexRDD(sc.textFile(confLabelFile).map(a=>{
       val pair = a.split('\t')
       (pair(0).toLong, pair(1))
     }))
       .repartition(numPartitions)
       .cache()
+    println("Retrieved Conference Labels")
+    val authorLabel = VertexRDD(sc.textFile(authorLabelFile).map(a=>{
+      val pair = a.split('\t')
+      (pair(0).toLong, pair(1))
+    }))
+      .repartition(numPartitions)
+      .cache()
+    println("Retrieved Author Labels")
+    val termLabel = VertexRDD(sc.textFile(termLabelFile).map(a=>{
+      val pair = a.split('\t')
+      (pair(0).toLong, pair(1))
+    }))
+      .repartition(numPartitions)
+      .cache()
+    println("Retrieved Term Labels")
+    val paperLabel = VertexRDD(sc.textFile(paperLabelFile).map(a=>{
+      val pair = a.split('\t')
+      (pair(0).toLong, pair(1))
+    }))
+      .repartition(numPartitions)
+      .cache()
+    println("Retrieved Paper Labels")
 
     val authorKeys = VertexRDD(sc.textFile(authorFile).map(a=>{
       val pair = a.split('\t')
-      (pair(0).toLong, new VertexProperties(VertexType.AUTHOR, pair(1)))
-    }))
+      (pair(0).toLong, pair(1))
+    })).leftJoin(confLabel)(
+        (v, p, u) => new VertexProperties(VertexType.AUTHOR, p, u.getOrElse(ResearchArea.NONE))
+      )
       .repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Authors")
     val venueKeys = VertexRDD(sc.textFile(venueFile).map(a=>{
       val pair = a.split('\t')
       (pair(0).toLong, pair(1))
-    })).leftJoin(confLabel)((v, p, u) => new VertexProperties(VertexType.VENUE, p, u.getOrElse(ResearchArea.NONE)))
+    })).leftJoin(confLabel)(
+        (v, p, u) => new VertexProperties(VertexType.VENUE, p, u.getOrElse(ResearchArea.NONE))
+      )
       .repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Venues")
     val termKeys = VertexRDD(sc.textFile(termFile).map(a=>{
       val pair = a.split('\t')
-      (pair(0).toLong, new VertexProperties(VertexType.TERM, pair(1)))
-    }))
+      (pair(0).toLong, pair(1))
+    })).leftJoin(confLabel)(
+        (v, p, u) => new VertexProperties(VertexType.TERM, p, u.getOrElse(ResearchArea.NONE))
+      )
       .repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Terms")
     val paperKeys = VertexRDD(sc.textFile(paperFile).map(a=>{
       val pair = a.split('\t')
-      (pair(0).toLong, new VertexProperties(VertexType.PAPER, pair(1)))
-    }))
+      (pair(0).toLong, pair(1))
+    })).leftJoin(confLabel)(
+        (v, p, u) => new VertexProperties(VertexType.PAPER, p, u.getOrElse(ResearchArea.NONE))
+      )
       .repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Papers")
-
-
-
-
 
     println(s"Num authors: ${authorKeys.count()}")
     println(s"Num venues: ${venueKeys.count()}")
     println(s"Num terms: ${termKeys.count()}")
     println(s"Num papers: ${paperKeys.count()}")
-
     var newVerts = graph.vertices
       .leftJoin(authorKeys)((v, i, u) => u.getOrElse(null))
       .leftJoin(venueKeys)((v, i, u) => u.getOrElse(i))
@@ -114,9 +135,6 @@ object SimpleApp {
     println("Joined Terms")
     println("Joined Papers")
     println("Filtered Invalid Vertices")
-
-
-
 
     //confLabel.collect.foreach(println)
     /*
@@ -134,8 +152,6 @@ object SimpleApp {
     println("Filtering complete")
     filtered.collect.foreach(println)
     */
-
-
     //top.foreach(println)
     /*
     newVerts.collect.foreach(a => {
