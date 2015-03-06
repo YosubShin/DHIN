@@ -21,10 +21,10 @@ object VertexType extends Enumeration{
   val PAPER, VENUE, AUTHOR, TERM = Value
 }
 
-class VertexProperties(t: VertexType.VertexType, attr: String){
+class VertexProperties(t: VertexType.VertexType, attr: String, l: ResearchArea.ResearchArea){
   val vType = t
   val attribute = attr
-  val label: ResearchArea.ResearchArea = ResearchArea.NONE
+  var label: ResearchArea.ResearchArea = l
 }
 
 object SimpleApp {
@@ -43,9 +43,10 @@ object SimpleApp {
     var termFile = "data/dblp_hin/term_key.txt"
     var paperFile = "data/dblp_hin/paper_key.txt"
     //.partitionBy(PartitionStrategy.EdgePartition2D)
-
     val numPartitions = 16
     val numTop = 100
+
+
     var graph: Graph[Int, Int] = GraphLoader.edgeListFile(sc, edgeFile, numEdgePartitions=numPartitions).cache()
     println(s"*Edges: ${graph.edges.count}")
     println(s"Vertices: ${graph.vertices.count}")
@@ -53,6 +54,16 @@ object SimpleApp {
     println(graph.edges.partitions.length)
     println(graph.vertices.partitions.length)
 
+
+    val labeledList = "data/DBLP_four_area/conf_label.txt"
+
+
+    val confLabel = VertexRDD(sc.textFile(labeledList).map(a=>{
+      val pair = a.split('\t')
+      (pair(0).toLong, pair(1))
+    }))
+      .repartition(numPartitions)
+      .cache()
 
     val authorKeys = VertexRDD(sc.textFile(authorFile).map(a=>{
       val pair = a.split('\t')
@@ -63,8 +74,8 @@ object SimpleApp {
     println("Merged Authors")
     val venueKeys = VertexRDD(sc.textFile(venueFile).map(a=>{
       val pair = a.split('\t')
-      (pair(0).toLong, new VertexProperties(VertexType.VENUE, pair(1)))
-    }))
+      (pair(0).toLong, pair(1))
+    })).leftJoin(confLabel)((v, p, u) => new VertexProperties(VertexType.VENUE, p, u.getOrElse(ResearchArea.NONE)))
       .repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Venues")
@@ -83,22 +94,32 @@ object SimpleApp {
       .cache()
     println("Merged Papers")
 
+
+
+
+
     println(s"Num authors: ${authorKeys.count()}")
     println(s"Num venues: ${venueKeys.count()}")
     println(s"Num terms: ${termKeys.count()}")
     println(s"Num papers: ${paperKeys.count()}")
 
-    var newVerts = graph.vertices.leftJoin(authorKeys)((v, i, u) => u.getOrElse(null))
+    var newVerts = graph.vertices
+      .leftJoin(authorKeys)((v, i, u) => u.getOrElse(null))
+      .leftJoin(venueKeys)((v, i, u) => u.getOrElse(i))
+      .leftJoin(termKeys)((v, i, u) => u.getOrElse(i))
+      .leftJoin(paperKeys)((v, i, u) => u.getOrElse(i))
+      .filter(v => v._2 != null)
     println("Joined Authors")
-    newVerts = newVerts.leftJoin(venueKeys)((v, i, u) => u.getOrElse(i))
     println("Joined Venues")
-    newVerts = newVerts.leftJoin(termKeys)((v, i, u) => u.getOrElse(i))
     println("Joined Terms")
-    newVerts = newVerts.leftJoin(paperKeys)((v, i, u) => u.getOrElse(i))
     println("Joined Papers")
-    newVerts = newVerts.filter(v => v._2 != null)
     println("Filtered Invalid Vertices")
 
+
+
+
+    //confLabel.collect.foreach(println)
+    /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)
     }
@@ -109,21 +130,18 @@ object SimpleApp {
     val elapsed = System.nanoTime - now
     println("PageRank done: " + elapsed/1000000000.0)
     val top = mutable.HashSet() ++ ranks.vertices.top(numTop)(vertexOrdering).map(_._1)
-
     val filtered = newVerts.filter(v => top.contains(v._1))
     println("Filtering complete")
     filtered.collect.foreach(println)
+    */
+
 
     //top.foreach(println)
-
     /*
     newVerts.collect.foreach(a => {
       println(s"${a._1} ${a._2}")
     })
     */
-
-
-
     sc.stop()
   }
 
