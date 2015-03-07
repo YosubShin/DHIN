@@ -15,5 +15,13 @@ case class VertexProperties(k: Int, vType: VertexType.VertexType, attribute: Str
   var label: ResearchArea.ResearchArea = l
   val rankDistribution: Array[Double] = Array.ofDim(k)
   val prevRankDistribution: Array[Double] = Array.ofDim(k)
+  val initialRankDistribution: Array[Double] = Array.ofDim(k)
+
+
+  //2-D array: rows object type, column objects belonging to object type
+  //1-D array: columns all neighbor
+  val S: Array[Double] = null
+
+
   var subnetworkId: Int = -1
 }
