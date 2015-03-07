@@ -20,8 +20,7 @@ case class VertexProperties(k: Int, vType: VertexType.VertexType, attribute: Str
 
   //2-D array: rows object type, column objects belonging to object type
   //1-D array: columns all neighbor
-  val S: Array[Double] = null
-
+  val RSum: Array[Double] = Array.ofDim[Double](4)
 
   var subnetworkId: Int = -1
 }

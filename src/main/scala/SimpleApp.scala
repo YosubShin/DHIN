@@ -29,11 +29,51 @@ object SimpleApp {
 
     //.partitionBy(PartitionStrategy.EdgePartition2D)
 
+    var vertices = Array(
+      (1L, VertexProperties(1, VertexType.PAPER, "", ResearchArea.AIML)),
+      (2L, VertexProperties(2, VertexType.PAPER, "", ResearchArea.AIML)),
+      (3L, VertexProperties(3, VertexType.AUTHOR, "", ResearchArea.AIML)),
+      (4L, VertexProperties(4, VertexType.AUTHOR, "", ResearchArea.AIML)),
+      (5L, VertexProperties(5, VertexType.VENUE, "", ResearchArea.AIML)),
+      (6L, VertexProperties(6, VertexType.VENUE, "", ResearchArea.AIML)),
+      (7L, VertexProperties(7, VertexType.TERM, "", ResearchArea.AIML)),
+      (8L, VertexProperties(8, VertexType.TERM, "", ResearchArea.AIML))
+    )
+
+    var edges = Array(
+      (1L, 3L, EdgeProperties()),
+      (1L, 5L, EdgeProperties()),
+      (1L, 7L, EdgeProperties()),
+      (2L, 4L, EdgeProperties()),
+      (2L, 6L, EdgeProperties()),
+      (2L, 8L, EdgeProperties()),
+      (1L, 2L, EdgeProperties())
+    )
+
+    val g: Graph[VertexProperties, EdgeProperties] = Graph(sc.parallelize(vertices), sc.parallelize(edges))
+
+
+    val aggregateTypes = g.aggregateMessages[Array[Double]](
+      ctx => {
+        ctx.sendToDst({
+          val arr = Array.ofDim[Double](4)
+          arr(ctx.srcAttr.label.id) = ctx.attr.R
+          arr
+        })
+        ctx.sendToSrc({
+          val arr = Array.ofDim[Double](4)
+          arr(ctx.dstAttr.label.id) = ctx.attr.R
+          arr
+        })
+      },
+      (a1, a2) => a1.zip(a2).map(a => a._1 + a._2)
+    )
+
     val numPartitions = 16
     val numTop = 100
     val k: Int = 4
 
-    val graph = GenerateGraph.generate(sc, k, numPartitions)
+    //val graph = GenerateGraph.generate(sc, k, numPartitions)
 
 
 

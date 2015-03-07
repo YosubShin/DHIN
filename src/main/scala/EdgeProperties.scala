@@ -1,6 +1,8 @@
 class EProperty() extends Serializable
 
-case class EdgeProperties(k: Int) extends VProperty{
-  val weights: Array[Double] = Array.ofDim(k).map(x => 1.0)
-  val prevWeights: Array[Double] = Array.ofDim(k).map(x => 1.0)
+case class EdgeProperties() extends VProperty{
+  val R = 1.0
+  val prevR = 1.0
+  val S = -1.0
+  val prevS = -1.0
 }

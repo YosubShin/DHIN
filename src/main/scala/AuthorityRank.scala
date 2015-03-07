@@ -11,22 +11,28 @@ object AuthorityRank extends Logging {
   : Graph[VertexProperties, EdgeProperties] =
   {
 
-    // each edge weight is R, in each stage vertex calculates S_ijpq
 
 
-    // Initialize the pagerankGraph with each edge attribute
-    // having weight 1/outDegree and each vertex with attribute 1.0.
-    val aGraph: Graph[(Double, Double), Double] = rankGraph
-      // Associate the degree with each vertex
-      .outerJoinVertices(rankGraph.outDegrees) {
-      (vid, vdata, deg) => deg.getOrElse(0)
-    }
-      // Set the weight on the edges based on the degree
-      .mapTriplets( e => 1.0 / e.srcAttr )
-      // Set the vertex attributes to (initalPR, delta = 0)
-      .mapVertices( (id, attr) => (0.0, 0.0) )
-      .cache()
 
+
+    val aggregateTypes = rankGraph.aggregateMessages[Array[Double]](
+      ctx => {
+        ctx.sendToDst({
+          val arr = Array.ofDim[Double](4)
+          arr(ctx.srcAttr.label.id) = ctx.attr.R
+          arr
+        })
+        ctx.sendToSrc({
+          val arr = Array.ofDim[Double](4)
+          arr(ctx.dstAttr.label.id) = ctx.attr.R
+          arr
+        })
+      },
+      (a1, a2) => a1.zip(a2).map(a => a._1 + a._2)
+    )
+
+
+    /*
 
     var iteration = 1
     var prevRankGraph: Graph[VertexProperties, EdgeProperties] = null
@@ -36,7 +42,16 @@ object AuthorityRank extends Logging {
       // Compute the outgoing rank contributions of each vertex, perform local preaggregation, and
       // do the final aggregation at the receiving vertices. Requires a shuffle for aggregation.
       val rankUpdates = rankGraph.aggregateMessages[Double](
-        ctx => ctx.sendToDst(ctx.srcAttr * ctx.attr),
+        ctx => {
+          ctx.sendToDst(ctx.srcAttr * ctx.attr)
+        },
+        _ + _,
+        TripletFields.Src)
+
+      val rankUpdates = rankGraph.aggregateMessages[Double](
+        ctx => {
+          ctx.sendToDst(ctx.srcAttr * ctx.attr)
+        },
         _ + _,
         TripletFields.Src)
 
@@ -55,7 +70,7 @@ object AuthorityRank extends Logging {
 
       iteration += 1
     }
-
+    */
     rankGraph
   }
 
@@ -76,6 +91,10 @@ object AuthorityRank extends Logging {
   def runUntilConvergence[VD: ClassTag, ED: ClassTag](
                                                        graph: Graph[VD, ED], tol: Double, resetProb: Double = 0.15): Graph[Double, Double] =
   {
+
+
+
+
     // Initialize the pagerankGraph with each edge attribute
     // having weight 1/outDegree and each vertex with attribute 1.0.
     val pagerankGraph: Graph[(Double, Double), Double] = graph
@@ -84,7 +103,9 @@ object AuthorityRank extends Logging {
       (vid, vdata, deg) => deg.getOrElse(0)
     }
       // Set the weight on the edges based on the degree
-      .mapTriplets( e => 1.0 / e.srcAttr )
+      .mapTriplets( e => {
+        1.0 / e.srcAttr
+    } )
       // Set the vertex attributes to (initalPR, delta = 0)
       .mapVertices( (id, attr) => (0.0, 0.0) )
       .cache()
