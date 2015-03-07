@@ -30,15 +30,14 @@ class RankClass(sc: SparkContext, k: Int, numPartitions: Int) {
       if(v._2.label == ResearchArea.NONE) {
         v._2.label = ResearchArea(Random.nextInt(k))
         v._2.rankDistribution.transform(x => 0.0)
-        v._2.prevRankDistribution.transform(x => 0.0)
         v._2.initialRankDistribution.transform(x => 0.0)
       }else{
         v._2.rankDistribution.transform(x => 1.0/countArray(v._2.label.id)(v._2.vType.id))
-        v._2.prevRankDistribution.transform(x => 1.0/countArray(v._2.label.id)(v._2.vType.id))
         v._2.initialRankDistribution.transform(x => 1.0/countArray(v._2.label.id)(v._2.vType.id))
       }
       v
     })
+
 
     oldVerts.unpersist(false)
 
