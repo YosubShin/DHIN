@@ -11,12 +11,12 @@ import scala.collection.mutable
  */
 
 
-object ResearchArea extends Enumeration{
+object ResearchArea extends Enumeration {
   type ResearchArea = Value
   val DATABASES, AIML, DATA_MINING, IR, NONE = Value
 }
 
-object VertexType extends Enumeration{
+object VertexType extends Enumeration {
   type VertexType = Value
   val PAPER, VENUE, AUTHOR, TERM = Value
 }
@@ -25,6 +25,20 @@ class VertexProperties(t: VertexType.VertexType, attr: String, l: ResearchArea.R
   val vType = t
   val attribute = attr
   var label: ResearchArea.ResearchArea = l
+}
+
+def intToRA(i: Int): ResearchArea.ResearchArea ={
+  if(i == 0){
+    ResearchArea.DATABASES
+  }else if(i == 1){
+    ResearchArea.AIML
+  }else if(i == 2){
+    ResearchArea.DATA_MINING
+  }else if(i == 3){
+    ResearchArea.IR
+  }else{
+    ResearchArea.NONE
+  }
 }
 
 object SimpleApp {
@@ -56,32 +70,34 @@ object SimpleApp {
 
     val confLabel = VertexRDD(sc.textFile(confLabelFile).map(a=>{
       val pair = a.split('\t')
-      (pair(0).toLong, pair(1))
+      (pair(0).toLong, intToRA(pair(1).toInt))
     }))
       .repartition(numPartitions)
       .cache()
     println("Retrieved Conference Labels")
     val authorLabel = VertexRDD(sc.textFile(authorLabelFile).map(a=>{
       val pair = a.split('\t')
-      (pair(0).toLong, pair(1))
+      (pair(0).toLong, intToRA(pair(1).toInt))
     }))
       .repartition(numPartitions)
       .cache()
     println("Retrieved Author Labels")
     val termLabel = VertexRDD(sc.textFile(termLabelFile).map(a=>{
       val pair = a.split('\t')
-      (pair(0).toLong, pair(1))
+      (pair(0).toLong, intToRA(pair(1).toInt))
     }))
       .repartition(numPartitions)
       .cache()
     println("Retrieved Term Labels")
     val paperLabel = VertexRDD(sc.textFile(paperLabelFile).map(a=>{
       val pair = a.split('\t')
-      (pair(0).toLong, pair(1))
+      (pair(0).toLong, intToRA(pair(1).toInt))
     }))
       .repartition(numPartitions)
       .cache()
     println("Retrieved Paper Labels")
+
+    val r: ResearchArea.ResearchArea = ResearchArea.NONE
 
     val authorKeys = VertexRDD(sc.textFile(authorFile).map(a=>{
       val pair = a.split('\t')
@@ -130,11 +146,7 @@ object SimpleApp {
       .leftJoin(termKeys)((v, i, u) => u.getOrElse(i))
       .leftJoin(paperKeys)((v, i, u) => u.getOrElse(i))
       .filter(v => v._2 != null)
-    println("Joined Authors")
-    println("Joined Venues")
-    println("Joined Terms")
-    println("Joined Papers")
-    println("Filtered Invalid Vertices")
+    println("Joined objects and filtered invalid vertices")
 
     //confLabel.collect.foreach(println)
     /*
