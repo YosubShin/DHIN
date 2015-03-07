@@ -31,7 +31,7 @@ class RankClass(sc: SparkContext, k: Int, numPartitions: Int) {
 
     var newVerts = graph.vertices.map(v => {
       if(v._2.label == ResearchArea.NONE) {
-        v._2.label = Util.intToRA(Random.nextInt(k))
+        v._2.label = ResearchArea(Random.nextInt(k))
         v._2.rankDistribution.transform(x => 0.0)
         v._2.prevRankDistribution.transform(x => 0.0)
       }else{
