@@ -3,6 +3,7 @@ import org.apache.log4j.Logger
 import org.apache.log4j.Level
 import org.apache.spark.graphx._
 import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.rdd.PairRDDFunctions
 
 object GenerateGraph {
 
@@ -89,6 +90,7 @@ object GenerateGraph {
       .repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Papers")
+    
 
     println(s"Num authors: ${authorKeys.count()}")
     println(s"Num venues: ${venueKeys.count()}")
@@ -99,13 +101,29 @@ object GenerateGraph {
       .leftJoin(venueKeys)((v, i, u) => u.getOrElse(i))
       .leftJoin(termKeys)((v, i, u) => u.getOrElse(i))
       .leftJoin(paperKeys)((v, i, u) => u.getOrElse(i))
-      .filter(v => v._2 != null)
+      .filter(v => (v != null && v._2 != null))
     println("Joined objects and filtered invalid vertices")
-
-
+    
     //confLabel.collect.foreach(println)
+    /*val newEdges = newVerts.join(
+        newVerts.join(
+            graph.edges.map{
+              case e => (e.srcId, e.dstId)}).map{
+          case (srcId, (u, dstId)) => (dstId, srcId)}).map{
+      case (dstId, (u, srcId)) => Edge(srcId, dstId, new EdgeProperties())}
+    //.map(e => Edge(e.srcId, e.dstId, new EdgeProperties())*/
+    
     val newEdges = graph.edges.map(e => Edge(e.srcId, e.dstId, new EdgeProperties()))
     var rankGraph = Graph(newVerts, newEdges)
+    
+    rankGraph = rankGraph.mapTriplets(e => {
+      val e1 = e.copy()
+      if (e.srcAttr == null || e.dstAttr == null) {null}
+      else {e1.attr}
+    }, TripletFields.All)
+    
+    rankGraph = Graph(newVerts, newEdges.filter(e => e.attr != null))
+    
     /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)

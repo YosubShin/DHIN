@@ -35,7 +35,7 @@ object SimpleApp {
     val numPartitions = 16
     val numTop = 100
 
-    var vertices = Array(
+    /*var vertices = Array(
       (1L, VertexProperties(k, VertexType.PAPER, "", ResearchArea.DATA_MINING)),
       (2L, VertexProperties(k, VertexType.PAPER, "", ResearchArea.AIML)),
       (3L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.DATA_MINING)),
@@ -62,20 +62,30 @@ object SimpleApp {
 
     var g: Graph[VertexProperties, EdgeProperties] = Graph(
       sc.parallelize(vertices),
-      sc.parallelize(edges))
+      sc.parallelize(edges))*/
+    
+    var g = GenerateGraph.generate(sc, k, numPartitions)
 
+    g.vertices.collect.foreach(v => {
+      if (v == null) println(v)
+      if (v._2 == null) println(v)
+    })
+    
     val countArray = g.vertices.aggregate(Array.ofDim[Int](k+1, 4))((a, b) => {
-      a(b._2.label.id)(b._2.vType.id) += 1
-      a
+      var a1 = a.map(_.clone()) 
+      a1(b._2.label.id)(b._2.vType.id) += 1
+      a1
     }, (a1, a2) => {
+      var a = a1.map(_.clone())
       // to k because of the NONE research area
       for(i <- 0 to k; j <- 0 to 3){
-        a1(i)(j) += a2(i)(j)
+        a(i)(j) = a1(i)(j) + a2(i)(j)
       }
-      a1
+      a
     })
     val oldg = g
-    g = g.mapVertices((_, v) => {
+    g = g.mapVertices((_, v1) => {
+      var v = v1.copy()
       if(v.label == ResearchArea.NONE) {
         v.label = ResearchArea(Random.nextInt(k))
         v.rankDistribution.transform(x => 0.0)
@@ -165,7 +175,7 @@ object SimpleApp {
     val lambda = Array.ofDim[Double](4, 4).transform(x => x.transform(y => 0.2).array).array
     var alpha = Array.ofDim[Double](4).transform(x => 0.1).array
 
-    var ranks = AuthorityRank.run(g, 2, lambda, alpha)
+    var ranks = AuthorityRank.run(g, 5, lambda, alpha)
 
 
     var top1 = ranks.vertices.top(10)(vertexOrdering1)//.map(_._1)

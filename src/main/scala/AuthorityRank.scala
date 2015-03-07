@@ -15,14 +15,18 @@ object AuthorityRank extends Logging {
   {
 
     val rankDenominator = lambda.zip(alpha).map(x => x._1.sum + x._2)
-    println(rankDenominator.mkString(" "))
+    //println(rankDenominator.mkString(" "))
+    
+    //lambda.foreach(e => println(e.mkString(" ")))
 
     var rankGraph = graph
     var iteration = 1
     var prevRankGraph: Graph[VertexProperties, EdgeProperties] = null
     while (iteration < numIter) {
-      rankGraph.vertices.collect.foreach(v => println(s"${v._1} ${v._2.rankDistribution.mkString(" ")}"))
+      //rankGraph.vertices.collect.foreach(v => println(s"${v._1} ${v._2.rankDistribution.mkString(" ")}"))
       rankGraph.cache()
+      
+      // Vertices collecting R[i,j] values from neighbors
       val aggregateTypes:VertexRDD[Array[Double]] = rankGraph.aggregateMessages[Array[Double]](
         ctx => {
           ctx.sendToDst({
@@ -39,9 +43,15 @@ object AuthorityRank extends Logging {
         (a1, a2) => a1.zip(a2).map(a => a._1 + a._2),
         TripletFields.All
       )
-      println("1******************")
-      aggregateTypes.collect.foreach(x => println(s"${x._1} ${x._2.mkString(" ")}"))
-      println("2******************")
+      //println("1******************")
+      //aggregateTypes.collect.foreach(x => println(s"${x._1} ${x._2.mkString(" ")}"))
+      
+      //println("1.1******************")
+      //rankGraph.vertices.collect().foreach(e => println(s"${e._1} ${e._2.rankDistribution.mkString(" ")}"))
+      
+      //println("2******************")
+      
+      // Computing the value of S[i,j] for edges
       val newGraph = Graph(
         rankGraph.vertices.leftJoin(aggregateTypes)((a, b, c) => (b, c.getOrElse(Array[Double]()))),
         rankGraph.edges
@@ -53,31 +63,53 @@ object AuthorityRank extends Logging {
         e.S = (1.0/math.sqrt(srcSum))*r*(1.0/math.sqrt(dstSum))
         e
       })
-      newGraph.edges.collect.foreach(e => println(s"${e.attr.S}"))
-      println("3******************")
+      
+      //newGraph.vertices.collect().foreach(e => println(s"${e._1} ${e._2._1.rankDistribution.mkString(" ")}"))
+      //println("2.1******************")
+      
+      //newGraph.edges.collect.foreach(e => println(s"${e.attr.S}"))
+      //println("3******************")
+      //newGraph.vertices.collect().foreach(e => println(s"${e._1} ${e._2._1.vType.id}"))
+      
+      //println("3.1******************")
+      //newGraph.vertices.collect().foreach(e => println(s"${e._1} ${e._2._1.rankDistribution.mkString(" ")}"))
+      
+      //println("3.2******************")
+      // Computing the new rank distribution for each class
       val rankUpdates = newGraph.aggregateMessages[Array[Double]](
         ctx=>{
           val srcType = ctx.srcAttr._1.vType.id
           val dstType = ctx.dstAttr._1.vType.id
-          ctx.sendToSrc(ctx.srcAttr._1.rankDistribution.transform(x => lambda(srcType)(dstType)*ctx.attr.S*x).array)
-          ctx.sendToDst(ctx.dstAttr._1.rankDistribution.transform(x => lambda(dstType)(srcType)*ctx.attr.S*x).array)
+          ctx.sendToDst(ctx.srcAttr._1.rankDistribution.map(x => lambda(srcType)(dstType)*ctx.attr.S*x).array)
+          ctx.sendToSrc(ctx.dstAttr._1.rankDistribution.map(x => lambda(dstType)(srcType)*ctx.attr.S*x).array)
         },
         (a1, a2) => a1.zip(a2).map(a => a._1 + a._2),
         TripletFields.All
       )
-      rankUpdates.collect.foreach(x => println(s"${x._1} ${x._2.mkString(" ")}"))
-      println("4******************")
+      //rankUpdates.collect.foreach(x => println(s"${x._1} ${x._2.mkString(" ")}"))
+      //println("4IR******************")
+      //newGraph.vertices.collect().foreach(e => println(s"${e._1} ${e._2._1.initialRankDistribution.mkString(" ")}"))
+      //println("4R******************")
+      //newGraph.vertices.collect().foreach(e => println(s"${e._1} ${e._2._1.rankDistribution.mkString(" ")}"))
+      //println("5R******************")
       newGraph.unpersist(false)
       prevRankGraph = rankGraph
-      rankGraph = rankGraph.joinVertices(rankUpdates)(
+      
+      // Including the initial rank distribution in the current rank distribution
+      rankGraph = newGraph.mapVertices((vid, vattr) => vattr._1).joinVertices(rankUpdates)(
         (vid, vattr, u) => {
           val v = vattr.copy()
+          v.rankDistribution = vattr.rankDistribution.clone()
+          v.initialRankDistribution = vattr.initialRankDistribution.clone()
           //v.rankDistribution = v.rankDistribution.zip(v.initialRankDistribution).map(x => x._1 + x._2*alpha(v.vType.id))
           for(i <- 0 to 3){
-            v.rankDistribution(i) = (v.rankDistribution(i) + alpha(v.vType.id)*v.initialRankDistribution(i))/rankDenominator(v.vType.id)
+            v.rankDistribution(i) = (u(i) + alpha(v.vType.id)*v.initialRankDistribution(i))/rankDenominator(v.vType.id)
           }
           v
       }).cache()
+      
+      //rankGraph.vertices.collect().foreach(e => println(s"${e._1} ${e._2.rankDistribution.mkString(" ")}"))
+      //println("5******************")
       rankGraph.edges.foreachPartition(x => {})
       prevRankGraph.unpersist(false)
       rankUpdates.unpersist(false)
