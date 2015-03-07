@@ -15,11 +15,13 @@ class RankClass(sc: SparkContext, k: Int, numPartitions: Int) {
 
   def run(): Unit = {
     val graph = GenerateGraph.generate(sc, k, numPartitions)
-    val countArray = graph.vertices.aggregate(Array.ofDim[Int](k, 4))((a, b) => {
+    // k+1 for the NONE research area
+    val countArray = graph.vertices.aggregate(Array.ofDim[Int](k+1, 4))((a, b) => {
       a(b._2.label.id)(b._2.vType.id) += 1
       a
     }, (a1, a2) => {
-      for(i <- 0 to k-1; j <- 0 to 3){
+      // to k because of the NONE research area
+      for(i <- 0 to k; j <- 0 to 3){
         a1(i)(j) += a2(i)(j)
       }
       a1
