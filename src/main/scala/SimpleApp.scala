@@ -72,32 +72,30 @@ object SimpleApp {
       val pair = a.split('\t')
       (pair(0).toLong, intToRA(pair(1).toInt))
     }))
-      .repartition(numPartitions)
+      .repartition(graph.vertices.partitions.length)
       .cache()
     println("Retrieved Conference Labels")
     val authorLabel = VertexRDD(sc.textFile(authorLabelFile).map(a=>{
       val pair = a.split('\t')
       (pair(0).toLong, intToRA(pair(1).toInt))
     }))
-      .repartition(numPartitions)
+      .repartition(graph.vertices.partitions.length)
       .cache()
     println("Retrieved Author Labels")
     val termLabel = VertexRDD(sc.textFile(termLabelFile).map(a=>{
       val pair = a.split('\t')
       (pair(0).toLong, intToRA(pair(1).toInt))
     }))
-      .repartition(numPartitions)
+      .repartition(graph.vertices.partitions.length)
       .cache()
     println("Retrieved Term Labels")
     val paperLabel = VertexRDD(sc.textFile(paperLabelFile).map(a=>{
       val pair = a.split('\t')
       (pair(0).toLong, intToRA(pair(1).toInt))
     }))
-      .repartition(numPartitions)
+      .repartition(graph.vertices.partitions.length)
       .cache()
     println("Retrieved Paper Labels")
-
-    val r: ResearchArea.ResearchArea = ResearchArea.NONE
 
     val authorKeys = VertexRDD(sc.textFile(authorFile).map(a=>{
       val pair = a.split('\t')
