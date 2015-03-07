@@ -41,13 +41,13 @@ object SimpleApp {
     )
 
     var edges = Array(
-      (1L, 3L, EdgeProperties()),
-      (1L, 5L, EdgeProperties()),
-      (1L, 7L, EdgeProperties()),
-      (2L, 4L, EdgeProperties()),
-      (2L, 6L, EdgeProperties()),
-      (2L, 8L, EdgeProperties()),
-      (1L, 2L, EdgeProperties())
+      Edge(1L, 3L, EdgeProperties()),
+      Edge(1L, 5L, EdgeProperties()),
+      Edge(1L, 7L, EdgeProperties()),
+      Edge(2L, 4L, EdgeProperties()),
+      Edge(2L, 6L, EdgeProperties()),
+      Edge(2L, 8L, EdgeProperties()),
+      Edge(1L, 2L, EdgeProperties())
     )
 
     val g: Graph[VertexProperties, EdgeProperties] = Graph(sc.parallelize(vertices), sc.parallelize(edges))

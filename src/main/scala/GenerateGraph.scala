@@ -104,7 +104,7 @@ object GenerateGraph {
 
 
     //confLabel.collect.foreach(println)
-    val newEdges = graph.edges.map(e => Edge(e.srcId, e.dstId, new EdgeProperties(k)))
+    val newEdges = graph.edges.map(e => Edge(e.srcId, e.dstId, new EdgeProperties()))
     var rankGraph = Graph(newVerts, newEdges)
     /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
