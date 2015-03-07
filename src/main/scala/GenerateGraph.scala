@@ -25,14 +25,14 @@ object GenerateGraph {
 
     val confLabel = VertexRDD(sc.textFile(confLabelFile).map(a => {
       val pair = a.split('\t')
-      (pair(0).toLong, Util.intToRA(pair(1).toInt))
+      (pair(0).toLong, ResearchArea(pair(1).toInt))
     }))
       .repartition(graph.vertices.partitions.length)
       .cache()
     println("Retrieved Conference Labels")
     val authorLabel = VertexRDD(sc.textFile(authorLabelFile).map(a => {
       val pair = a.split('\t')
-      (pair(0).toLong, Util.intToRA(pair(1).toInt))
+      (pair(0).toLong,  ResearchArea(pair(1).toInt))
     }))
       .repartition(graph.vertices.partitions.length)
       .cache()
@@ -40,14 +40,14 @@ object GenerateGraph {
     /*
   val termLabel = VertexRDD(sc.textFile(termLabelFile).map(a=>{
     val pair = a.split('\t')
-    (pair(0).toLong, Util.intToRA(pair(1).toInt))
+    (pair(0).toLong, ResearchArea(pair(1).toInt))
   }))
     .repartition(graph.vertices.partitions.length)
     .cache()
   println("Retrieved Term Labels")
   val paperLabel = VertexRDD(sc.textFile(paperLabelFile).map(a=>{
     val pair = a.split('\t')
-    (pair(0).toLong, Util.intToRA(pair(1).toInt))
+    (pair(0).toLong, ResearchArea(pair(1).toInt))
   }))
     .repartition(graph.vertices.partitions.length)
     .cache()
