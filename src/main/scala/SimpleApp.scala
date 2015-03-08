@@ -135,7 +135,7 @@ object SimpleApp {
     val lambda = Array.ofDim[Double](4, 4).transform(x => x.transform(y => 0.2).array).array
     var alpha = Array.ofDim[Double](4).transform(x => 0.1).array
     val now = System.nanoTime
-    var ranks = AuthorityRank.run(g, 5, lambda, alpha)
+    var ranks = AuthorityRank.run(sc, g, 5, lambda, alpha)
     ranks.edges.foreachPartition(x => {})
     val elapsed = System.nanoTime - now
     println("AuthorityRank done: " + elapsed / 1000000000.0)
