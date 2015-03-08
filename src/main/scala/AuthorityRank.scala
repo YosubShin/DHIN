@@ -78,8 +78,8 @@ object AuthorityRank extends Logging {
       rankUpdates.foreachPartition(x => {})
       elapsed = System.nanoTime - now
       println(s"Num partitions for newGraph: ${rankUpdates.partitions.length} ${elapsed / 1000000000.0}")
+
       println("End 3, Start 4")
-      //prevRankGraph = rankGraph
       // Including the initial rank distribution in the current rank distribution
       now = System.nanoTime
       rankGraph = newGraph.mapVertices((vid, vattr) => vattr._1).joinVertices(rankUpdates)(
