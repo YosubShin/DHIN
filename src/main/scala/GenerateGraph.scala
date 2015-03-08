@@ -4,12 +4,95 @@ import org.apache.log4j.Level
 import org.apache.spark.graphx._
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.PairRDDFunctions
+import scala.util.Random
 
 object GenerateGraph {
 
-
-
   def generate(sc: SparkContext, k:Int, numPartitions:Int): Graph[VertexProperties, EdgeProperties] = {
+    var g = GenerateGraph.readAndPreProcess(sc, k, numPartitions)
+    //var g = generateToyGraph(sc, k, numPartitions)
+    
+    g.vertices.collect.foreach(v => {
+      if (v == null) println(v)
+      if (v._2 == null) println(v)
+    })
+    
+    val countArray = g.vertices.aggregate(Array.ofDim[Int](k+1, 4))((a, b) => {
+      var a1 = a.map(_.clone()) 
+      a1(b._2.label.id)(b._2.vType.id) += 1
+      a1
+    }, (a1, a2) => {
+      var a = a1.map(_.clone())
+      // to k because of the NONE research area
+      for(i <- 0 to k; j <- 0 to 3){
+        a(i)(j) = a1(i)(j) + a2(i)(j)
+      }
+      a
+    })
+    //println(countArray.foreach(e => println(e.mkString(" "))))
+    
+    val oldg = g
+    g = g.mapVertices((_, v1) => {
+      var v = v1.copy()
+      /*if(v.label == ResearchArea.NONE) {
+        v.label = ResearchArea(Random.nextInt(k))
+        v.rankDistribution.transform(x => 0.0)
+        v.initialRankDistribution.transform(x => 0.0)
+      }else{*/
+        for (i <- 0 to 3) {
+          if (v.label.id == i) {
+            v.rankDistribution(i) = 1.0/countArray(i)(v.vType.id) 
+            v.initialRankDistribution(i) = 1.0/countArray(i)(v.vType.id) 
+          }
+          else {
+            v.rankDistribution(i) = 0.0
+            v.initialRankDistribution(i) = 0.0
+          }
+        }
+        //v.rankDistribution.transform(x => 1.0/countArray(v.label.id)(v.vType.id))
+        //v.initialRankDistribution.transform(x => 1.0/countArray(v.label.id)(v.vType.id))
+      //}
+      v
+    })
+    //g.vertices.collect().foreach(e => println(e._2.initialRankDistribution.mkString(" ")))
+    g
+  }
+  
+  def generateToyGraph(sc: SparkContext, k:Int, numPartitions:Int): Graph[VertexProperties, EdgeProperties] = {
+    var vertices = Array(
+      (1L, VertexProperties(k, VertexType.PAPER, "", ResearchArea.DATA_MINING)),
+      (2L, VertexProperties(k, VertexType.PAPER, "", ResearchArea.AIML)),
+      (3L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.DATA_MINING)),
+      (4L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.NONE)),
+      (5L, VertexProperties(k, VertexType.VENUE, "", ResearchArea.NONE)),
+      (6L, VertexProperties(k, VertexType.VENUE, "", ResearchArea.AIML)),
+      (7L, VertexProperties(k, VertexType.TERM, "", ResearchArea.DATA_MINING)),
+      (8L, VertexProperties(k, VertexType.TERM, "", ResearchArea.AIML)),
+      (9L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.NONE)),
+      (10L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.DATA_MINING))
+    )
+
+    var edges = Array(
+      Edge(1L, 3L, EdgeProperties()),
+      Edge(1L, 5L, EdgeProperties()),
+      Edge(1L, 7L, EdgeProperties()),
+      Edge(2L, 4L, EdgeProperties()),
+      Edge(2L, 6L, EdgeProperties()),
+      Edge(2L, 8L, EdgeProperties()),
+      Edge(1L, 2L, EdgeProperties()),
+      Edge(1L, 9L, EdgeProperties()),
+      Edge(1L, 10L, EdgeProperties())
+    )
+
+    var g: Graph[VertexProperties, EdgeProperties] = Graph(
+      sc.parallelize(vertices),
+      sc.parallelize(edges))
+     
+    g
+  }
+
+
+  def readAndPreProcess(sc: SparkContext, k:Int, numPartitions:Int): Graph[VertexProperties, EdgeProperties] = {
     var edgeFile = "data/dblp_hin/dblp_edgelist"
     var authorFile = "data/dblp_hin/author_key.txt"
     var venueFile = "data/dblp_hin/venue_key.txt"
@@ -101,30 +184,10 @@ object GenerateGraph {
       .leftJoin(venueKeys)((v, i, u) => u.getOrElse(i))
       .leftJoin(termKeys)((v, i, u) => u.getOrElse(i))
       .leftJoin(paperKeys)((v, i, u) => u.getOrElse(i))
-      .filter(v => (v != null || v._2 != null))
+      .filter(v => (v != null && v._2 != null))
     println("Joined objects and filtered invalid vertices")
-    
-    
-    
-    //confLabel.collect.foreach(println)
-    val newEdges = newVerts.leftJoin(
-      newVerts.leftJoin(graph.edges.map {
-        case e => (e.srcId, e.dstId)
-      }) {
-        case (srcId, u, dstId) => (Some(dstId), srcId)
-      }) {
-        case (dstId, u, srcId) => Edge[EdgeProperties](Some(srcId), dstId, new EdgeProperties())
-      //case (dstId, u, srcId) => Edge[EdgeProperties](srcId, dstId, new EdgeProperties())
-    }
-      
-      /*.map {
-        case (srcId, (u, dstId)) => (dstId, srcId)
-      }).map {
-        case (dstId, (u, srcId)) => Edge[EdgeProperties](srcId, dstId, new EdgeProperties())
-      }*/
-    //.map(e => Edge(e.srcId, e.dstId, new EdgeProperties())
         
-    //val newEdges = graph.edges.map(e => Edge(e.srcId, e.dstId, new EdgeProperties()))
+    val newEdges = graph.edges.map(e => Edge(e.srcId, e.dstId, new EdgeProperties()))
     var rankGraph = Graph(newVerts, newEdges)
     
     rankGraph = rankGraph.mapTriplets(e => {
@@ -137,14 +200,10 @@ object GenerateGraph {
       }
     }, TripletFields.All)
     
-    //rankGraph.edges.collect().foreach(e => if (e.attr == null) println(e))
-    //rankGraph.triplets.collect().foreach(e => if (e.srcAttr == null || e.dstAttr == null) println(e))
-    val edgesTemp = newEdges.filter(e => (e.attr != null))
+    val edgesTemp = rankGraph.edges.filter(e => (e.attr != null))
     
     rankGraph = Graph(newVerts, edgesTemp)
-    //rankGraph.triplets.collect().foreach(e => if (e.srcAttr == null || e.dstAttr == null) println(e))
-    val temp = rankGraph.triplets.filter(e => (e.srcAttr == null || e.dstAttr == null)).count()
-    println(temp)
+    
     /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)

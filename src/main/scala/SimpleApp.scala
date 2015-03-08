@@ -34,70 +34,7 @@ object SimpleApp {
     val k: Int = 4
     val numPartitions = 16
     val numTop = 100
-
-    /*var vertices = Array(
-      (1L, VertexProperties(k, VertexType.PAPER, "", ResearchArea.DATA_MINING)),
-      (2L, VertexProperties(k, VertexType.PAPER, "", ResearchArea.AIML)),
-      (3L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.DATA_MINING)),
-      (4L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.NONE)),
-      (5L, VertexProperties(k, VertexType.VENUE, "", ResearchArea.NONE)),
-      (6L, VertexProperties(k, VertexType.VENUE, "", ResearchArea.AIML)),
-      (7L, VertexProperties(k, VertexType.TERM, "", ResearchArea.DATA_MINING)),
-      (8L, VertexProperties(k, VertexType.TERM, "", ResearchArea.AIML)),
-      (9L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.NONE)),
-      (10L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.DATA_MINING))
-    )
-
-    var edges = Array(
-      Edge(1L, 3L, EdgeProperties()),
-      Edge(1L, 5L, EdgeProperties()),
-      Edge(1L, 7L, EdgeProperties()),
-      Edge(2L, 4L, EdgeProperties()),
-      Edge(2L, 6L, EdgeProperties()),
-      Edge(2L, 8L, EdgeProperties()),
-      Edge(1L, 2L, EdgeProperties()),
-      Edge(1L, 9L, EdgeProperties()),
-      Edge(1L, 10L, EdgeProperties())
-    )
-
-    var g: Graph[VertexProperties, EdgeProperties] = Graph(
-      sc.parallelize(vertices),
-      sc.parallelize(edges))*/
     
-    var g = GenerateGraph.generate(sc, k, numPartitions)
-    /*
-    g.vertices.collect.foreach(v => {
-      if (v == null) println(v)
-      if (v._2 == null) println(v)
-    })
-    
-    val countArray = g.vertices.aggregate(Array.ofDim[Int](k+1, 4))((a, b) => {
-      var a1 = a.map(_.clone()) 
-      a1(b._2.label.id)(b._2.vType.id) += 1
-      a1
-    }, (a1, a2) => {
-      var a = a1.map(_.clone())
-      // to k because of the NONE research area
-      for(i <- 0 to k; j <- 0 to 3){
-        a(i)(j) = a1(i)(j) + a2(i)(j)
-      }
-      a
-    })
-    val oldg = g
-    g = g.mapVertices((_, v1) => {
-      var v = v1.copy()
-      if(v.label == ResearchArea.NONE) {
-        v.label = ResearchArea(Random.nextInt(k))
-        v.rankDistribution.transform(x => 0.0)
-        v.initialRankDistribution.transform(x => 0.0)
-      }else{
-        v.rankDistribution.transform(x => 1.0/countArray(v.label.id)(v.vType.id))
-        v.initialRankDistribution.transform(x => 1.0/countArray(v.label.id)(v.vType.id))
-      }
-      v
-    })
-    g.unpersist(false)
-
     /*
     val aggregateTypes:VertexRDD[Array[Double]] = g.aggregateMessages[Array[Double]](
       ctx => {
@@ -134,7 +71,8 @@ object SimpleApp {
     //AuthorityRank.run(g)
     */
 
-
+    val g = GenerateGraph.generate(sc, k, numPartitions)
+    
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)
     }
@@ -178,10 +116,13 @@ object SimpleApp {
     var ranks = AuthorityRank.run(g, 5, lambda, alpha)
 
 
-    var top1 = ranks.vertices.top(10)(vertexOrdering1)//.map(_._1)
-    top1.foreach(x => println(s"${x._1} ${x._2.rankDistribution.mkString(" ")}"))
+    var top1 = ranks.vertices.top(10)(vertexOrdering2)//.map(_._1)
+    top1.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
 
-  */
+    var topAuthors = ranks.vertices.filter(e => (e._2.vType == VertexType.AUTHOR)).top(10)(vertexOrdering2)
+    topAuthors.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
+    
+  
 
 
     //val graph = GenerateGraph.generate(sc, k, numPartitions)
