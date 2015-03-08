@@ -203,7 +203,8 @@ object GenerateGraph {
     val edgesTemp = rankGraph.edges.filter(e => (e.attr != null))
     
     rankGraph = Graph(newVerts, edgesTemp)
-    
+    println("Number of partitions: " + rankGraph.edges.partitions.length)
+
     /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)

@@ -42,7 +42,7 @@ object AuthorityRank extends Logging {
         },
         (a1, a2) => a1.zip(a2).map(a => a._1 + a._2),
         TripletFields.All
-      )
+      ).cache()
       //println("1******************")
       //aggregateTypes.collect.foreach(x => println(s"${x._1} ${x._2.mkString(" ")}"))
       
@@ -62,7 +62,7 @@ object AuthorityRank extends Logging {
         val r = triplet.attr.R
         e.S = (1.0/math.sqrt(srcSum))*r*(1.0/math.sqrt(dstSum))
         e
-      })
+      }).cache()
       
       //newGraph.vertices.collect().foreach(e => println(s"${e._1} ${e._2._1.rankDistribution.mkString(" ")}"))
       //println("2.1******************")
@@ -85,7 +85,7 @@ object AuthorityRank extends Logging {
         },
         (a1, a2) => a1.zip(a2).map(a => a._1 + a._2),
         TripletFields.All
-      )
+      ).cache()
       //rankUpdates.collect.foreach(x => println(s"${x._1} ${x._2.mkString(" ")}"))
       //println("4IR******************")
       //newGraph.vertices.collect().foreach(e => println(s"${e._1} ${e._2._1.initialRankDistribution.mkString(" ")}"))

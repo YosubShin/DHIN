@@ -71,7 +71,7 @@ object SimpleApp {
     //AuthorityRank.run(g)
     */
 
-    val g = GenerateGraph.generate(sc, k, numPartitions)
+    val g = GenerateGraph.generate(sc, k, numPartitions).cache()
     
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)
