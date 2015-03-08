@@ -21,8 +21,8 @@ object GenerateGraph {
     val paperLabelFile = "data/DBLP_four_area/paper_label.txt"
 
     var graph: Graph[Int, Int] = GraphLoader.edgeListFile(sc, edgeFile, numEdgePartitions = numPartitions).cache()
-    println(s"*Edges: ${graph.edges.count}")
-    println(s"Vertices: ${graph.vertices.count}")
+    //println(s"*Edges: ${graph.edges.count}")
+    //println(s"Vertices: ${graph.vertices.count}")
 
     val confLabel = VertexRDD(sc.textFile(confLabelFile).map(a => {
       val pair = a.split('\t')
@@ -92,38 +92,59 @@ object GenerateGraph {
     println("Merged Papers")
     
 
-    println(s"Num authors: ${authorKeys.count()}")
-    println(s"Num venues: ${venueKeys.count()}")
-    println(s"Num terms: ${termKeys.count()}")
-    println(s"Num papers: ${paperKeys.count()}")
+    //println(s"Num authors: ${authorKeys.count()}")
+    //println(s"Num venues: ${venueKeys.count()}")
+    //println(s"Num terms: ${termKeys.count()}")
+    //println(s"Num papers: ${paperKeys.count()}")
     var newVerts = graph.vertices
       .leftJoin(authorKeys)((v, i, u) => u.getOrElse(null))
       .leftJoin(venueKeys)((v, i, u) => u.getOrElse(i))
       .leftJoin(termKeys)((v, i, u) => u.getOrElse(i))
       .leftJoin(paperKeys)((v, i, u) => u.getOrElse(i))
-      .filter(v => (v != null && v._2 != null))
+      .filter(v => (v != null || v._2 != null))
     println("Joined objects and filtered invalid vertices")
     
-    //confLabel.collect.foreach(println)
-    /*val newEdges = newVerts.join(
-        newVerts.join(
-            graph.edges.map{
-              case e => (e.srcId, e.dstId)}).map{
-          case (srcId, (u, dstId)) => (dstId, srcId)}).map{
-      case (dstId, (u, srcId)) => Edge(srcId, dstId, new EdgeProperties())}
-    //.map(e => Edge(e.srcId, e.dstId, new EdgeProperties())*/
     
-    val newEdges = graph.edges.map(e => Edge(e.srcId, e.dstId, new EdgeProperties()))
+    
+    //confLabel.collect.foreach(println)
+    val newEdges = newVerts.leftJoin(
+      newVerts.leftJoin(graph.edges.map {
+        case e => (e.srcId, e.dstId)
+      }) {
+        case (srcId, u, dstId) => (Some(dstId), srcId)
+      }) {
+        case (dstId, u, srcId) => Edge[EdgeProperties](Some(srcId), dstId, new EdgeProperties())
+      //case (dstId, u, srcId) => Edge[EdgeProperties](srcId, dstId, new EdgeProperties())
+    }
+      
+      /*.map {
+        case (srcId, (u, dstId)) => (dstId, srcId)
+      }).map {
+        case (dstId, (u, srcId)) => Edge[EdgeProperties](srcId, dstId, new EdgeProperties())
+      }*/
+    //.map(e => Edge(e.srcId, e.dstId, new EdgeProperties())
+        
+    //val newEdges = graph.edges.map(e => Edge(e.srcId, e.dstId, new EdgeProperties()))
     var rankGraph = Graph(newVerts, newEdges)
     
     rankGraph = rankGraph.mapTriplets(e => {
       val e1 = e.copy()
-      if (e.srcAttr == null || e.dstAttr == null) {null}
-      else {e1.attr}
+      if (e.srcAttr == null || e.dstAttr == null) {
+        null
+      }
+      else {
+        e1.attr
+      }
     }, TripletFields.All)
     
-    rankGraph = Graph(newVerts, newEdges.filter(e => e.attr != null))
+    //rankGraph.edges.collect().foreach(e => if (e.attr == null) println(e))
+    //rankGraph.triplets.collect().foreach(e => if (e.srcAttr == null || e.dstAttr == null) println(e))
+    val edgesTemp = newEdges.filter(e => (e.attr != null))
     
+    rankGraph = Graph(newVerts, edgesTemp)
+    //rankGraph.triplets.collect().foreach(e => if (e.srcAttr == null || e.dstAttr == null) println(e))
+    val temp = rankGraph.triplets.filter(e => (e.srcAttr == null || e.dstAttr == null)).count()
+    println(temp)
     /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)

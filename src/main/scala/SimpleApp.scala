@@ -65,7 +65,7 @@ object SimpleApp {
       sc.parallelize(edges))*/
     
     var g = GenerateGraph.generate(sc, k, numPartitions)
-
+    /*
     g.vertices.collect.foreach(v => {
       if (v == null) println(v)
       if (v._2 == null) println(v)
@@ -181,7 +181,7 @@ object SimpleApp {
     var top1 = ranks.vertices.top(10)(vertexOrdering1)//.map(_._1)
     top1.foreach(x => println(s"${x._1} ${x._2.rankDistribution.mkString(" ")}"))
 
-
+  */
 
 
     //val graph = GenerateGraph.generate(sc, k, numPartitions)
