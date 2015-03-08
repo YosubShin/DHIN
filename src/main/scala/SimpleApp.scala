@@ -22,12 +22,13 @@ object SimpleApp {
 
   def main(args: Array[String]) {
     println("Main")
-    Logger.getLogger("org").setLevel(Level.WARN)
-    Logger.getLogger("akka").setLevel(Level.WARN)
+    //Logger.getLogger("org").setLevel(Level.WARN)
+    //Logger.getLogger("akka").setLevel(Level.WARN)
     val conf = new SparkConf()
     val sc = new SparkContext(conf.setAppName("dhin"))
    //val sc = new SparkContext("local[8]", "DHIN", "/usr/local/Cellar/apache-spark/1.2.1/libexec",
     //  List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
+    sc.setCheckpointDir("/home/mustang/tmp")
     //"spark://mustang12:7077", "DHIN", "/usr/local/Cellar/apache-spark/1.0.2/libexec",
       //List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
 

@@ -16,6 +16,9 @@ object AuthorityRank extends Logging {
     var rankGraph = graph
     var iteration = 1
     var prevRankGraph: Graph[VertexProperties, EdgeProperties] = null
+
+    graph.checkpoint()
+
     while (iteration < numIter) {
       rankGraph.cache()
       // Vertices collecting R[i,j] values from neighbors
@@ -36,7 +39,7 @@ object AuthorityRank extends Logging {
         (a1, a2) => a1.zip(a2).map(a => a._1 + a._2),
         TripletFields.All
       ).cache()
-      aggregateTypes.foreachPartition(x => {})
+      //aggregateTypes.foreachPartition(x => {})
       println(s"Num partitions for aggregateTypes: ${aggregateTypes.partitions.length}")
       println("End 1, Start 2")
       // Computing the value of S[i,j] for edges
@@ -53,7 +56,7 @@ object AuthorityRank extends Logging {
         e.S = (1.0/math.sqrt(srcSum))*r*(1.0/math.sqrt(dstSum))
         e
       }).cache()//.repartition(rankGraph.edges.partitions.length).cache()
-      newGraph.edges.foreachPartition(x => {})
+      //newGraph.edges.foreachPartition(x => {})
       println(s"Num partitions for newGraph: ${newGraph.edges.partitions.length}")
       println("End 2, Start 3")
       // Computing the new rank distribution for each class
@@ -67,7 +70,7 @@ object AuthorityRank extends Logging {
         (a1, a2) => a1.zip(a2).map(a => a._1 + a._2),
         TripletFields.All
       ).cache()
-      rankUpdates.foreachPartition(x => {})
+      //rankUpdates.foreachPartition(x => {})
       println(s"Num partitions for newGraph: ${rankUpdates.partitions.length}")
       println("End 3, Start 4")
       //prevRankGraph = rankGraph
