@@ -23,6 +23,7 @@ object AuthorityRank extends Logging {
       rankGraph.cache()
       // Vertices collecting R[i,j] values from neighbors
       println("Start 1")
+      var now = System.nanoTime
       val aggregateTypes:VertexRDD[Array[Double]] = rankGraph.aggregateMessages[Array[Double]](
         ctx => {
           ctx.sendToDst({
@@ -39,10 +40,12 @@ object AuthorityRank extends Logging {
         (a1, a2) => a1.zip(a2).map(a => a._1 + a._2),
         TripletFields.All
       ).cache()
-      //aggregateTypes.foreachPartition(x => {})
-      println(s"Num partitions for aggregateTypes: ${aggregateTypes.partitions.length}")
+      aggregateTypes.foreachPartition(x => {})
+      var elapsed = System.nanoTime - now
+      println(s"Num partitions for aggregateTypes: ${aggregateTypes.partitions.length} ${elapsed / 1000000000.0}")
       println("End 1, Start 2")
       // Computing the value of S[i,j] for edges
+      now = System.nanoTime
       val newGraph = Graph(
         rankGraph.vertices.leftJoin(aggregateTypes)(
           (a, b, c) => (b, c.getOrElse(Array[Double]()))
@@ -56,10 +59,12 @@ object AuthorityRank extends Logging {
         e.S = (1.0/math.sqrt(srcSum))*r*(1.0/math.sqrt(dstSum))
         e
       }).cache()//.repartition(rankGraph.edges.partitions.length).cache()
-      //newGraph.edges.foreachPartition(x => {})
-      println(s"Num partitions for newGraph: ${newGraph.edges.partitions.length}")
+      newGraph.edges.foreachPartition(x => {})
+      elapsed = System.nanoTime - now
+      println(s"Num partitions for newGraph: ${newGraph.edges.partitions.length} ${elapsed / 1000000000.0}")
       println("End 2, Start 3")
       // Computing the new rank distribution for each class
+      now = System.nanoTime
       val rankUpdates = newGraph.aggregateMessages[Array[Double]](
         ctx=>{
           val srcType = ctx.srcAttr._1.vType.id
@@ -70,11 +75,13 @@ object AuthorityRank extends Logging {
         (a1, a2) => a1.zip(a2).map(a => a._1 + a._2),
         TripletFields.All
       ).cache()
-      //rankUpdates.foreachPartition(x => {})
-      println(s"Num partitions for newGraph: ${rankUpdates.partitions.length}")
+      rankUpdates.foreachPartition(x => {})
+      elapsed = System.nanoTime - now
+      println(s"Num partitions for newGraph: ${rankUpdates.partitions.length} ${elapsed / 1000000000.0}")
       println("End 3, Start 4")
       //prevRankGraph = rankGraph
       // Including the initial rank distribution in the current rank distribution
+      now = System.nanoTime
       rankGraph = newGraph.mapVertices((vid, vattr) => vattr._1).joinVertices(rankUpdates)(
         (vid, vattr, u) => {
           val v = vattr.copy()
@@ -87,7 +94,8 @@ object AuthorityRank extends Logging {
           v
       }).cache()//.repartition(rankGraph.edges.partitions.length).cache()
       rankGraph.edges.foreachPartition(x => {})
-      println(s"Num partitions for newGraph: ${rankGraph.edges.partitions.length}")
+      elapsed = System.nanoTime - now
+      println(s"Num partitions for newGraph: ${rankGraph.edges.partitions.length} ${elapsed / 1000000000.0}")
       println("End 4")
       //prevRankGraph.unpersist(false)
       //rankUpdates.unpersist(false)

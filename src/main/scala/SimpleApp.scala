@@ -77,6 +77,7 @@ object SimpleApp {
     val g = GenerateGraph.generate(sc, k, numPartitions).cache()
 
 
+    /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)
     }
@@ -91,9 +92,9 @@ object SimpleApp {
     //filtered.collect.foreach(println)
 
     //top.foreach(println)
+    */
 
 
-    /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)
     }
@@ -133,8 +134,11 @@ object SimpleApp {
 
     val lambda = Array.ofDim[Double](4, 4).transform(x => x.transform(y => 0.2).array).array
     var alpha = Array.ofDim[Double](4).transform(x => 0.1).array
-
+    val now = System.nanoTime
     var ranks = AuthorityRank.run(g, 5, lambda, alpha)
+    ranks.edges.foreachPartition(x => {})
+    val elapsed = System.nanoTime - now
+    println("AuthorityRank done: " + elapsed / 1000000000.0)
 
 
     var top1 = ranks.vertices.top(10)(vertexOrdering2)//.map(_._1)
@@ -142,7 +146,7 @@ object SimpleApp {
 
     var topAuthors = ranks.vertices.filter(e => (e._2.vType == VertexType.AUTHOR)).top(10)(vertexOrdering2)
     topAuthors.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
-    */
+
   
 
 
