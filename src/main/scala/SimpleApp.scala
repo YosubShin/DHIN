@@ -22,8 +22,8 @@ object SimpleApp {
 
   def main(args: Array[String]) {
     println("Main")
-    //Logger.getLogger("org").setLevel(Level.WARN)
-    //Logger.getLogger("akka").setLevel(Level.WARN)
+    Logger.getLogger("org").setLevel(Level.WARN)
+    Logger.getLogger("akka").setLevel(Level.WARN)
     val conf = new SparkConf()
     val sc = new SparkContext(conf.setAppName("dhin"))
    //val sc = new SparkContext("local[8]", "DHIN", "/usr/local/Cellar/apache-spark/1.2.1/libexec",
@@ -75,7 +75,25 @@ object SimpleApp {
     */
 
     val g = GenerateGraph.generate(sc, k, numPartitions).cache()
-    
+
+
+    val vertexOrdering = new Ordering[(VertexId, Double)] {
+      override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)
+    }
+    val now = System.nanoTime
+    var ranks = g.staticPageRank(5).cache()
+    ranks.edges.foreachPartition(x => {})
+    val elapsed = System.nanoTime - now
+    println("PageRank done: " + elapsed / 1000000000.0)
+    val top = Set() ++ ranks.vertices.top(numTop)(vertexOrdering).map(_._1)
+    top.foreach(println)
+    //val filtered = newVerts.filter(v => top.contains(v._1))
+    //filtered.collect.foreach(println)
+
+    //top.foreach(println)
+
+
+    /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)
     }
@@ -124,7 +142,7 @@ object SimpleApp {
 
     var topAuthors = ranks.vertices.filter(e => (e._2.vType == VertexType.AUTHOR)).top(10)(vertexOrdering2)
     topAuthors.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
-    
+    */
   
 
 
