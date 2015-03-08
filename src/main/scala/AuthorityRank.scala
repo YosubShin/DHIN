@@ -11,14 +11,8 @@ import org.apache.spark.rdd.RDD
 object AuthorityRank extends Logging {
 
   def run(graph: Graph[VertexProperties, EdgeProperties], numIter: Int, lambda: Array[Array[Double]], alpha: Array[Double])
-  : Graph[VertexProperties, EdgeProperties] =
-  {
-
+  : Graph[VertexProperties, EdgeProperties] = {
     val rankDenominator = lambda.zip(alpha).map(x => x._1.sum + x._2)
-    //println(rankDenominator.mkString(" "))
-    
-    //lambda.foreach(e => println(e.mkString(" ")))
-
     var rankGraph = graph
     var iteration = 1
     var prevRankGraph: Graph[VertexProperties, EdgeProperties] = null
@@ -43,6 +37,7 @@ object AuthorityRank extends Logging {
         TripletFields.All
       ).cache()
       aggregateTypes.foreachPartition(x => {})
+      println(s"Num partitions for aggregateTypes: ${aggregateTypes.partitions.length}")
       println("End 1, Start 2")
       // Computing the value of S[i,j] for edges
       val newGraph = Graph(
@@ -57,8 +52,9 @@ object AuthorityRank extends Logging {
         val r = triplet.attr.R
         e.S = (1.0/math.sqrt(srcSum))*r*(1.0/math.sqrt(dstSum))
         e
-      }).cache()
+      }).cache()//.repartition(rankGraph.edges.partitions.length).cache()
       newGraph.edges.foreachPartition(x => {})
+      println(s"Num partitions for newGraph: ${newGraph.edges.partitions.length}")
       println("End 2, Start 3")
       // Computing the new rank distribution for each class
       val rankUpdates = newGraph.aggregateMessages[Array[Double]](
@@ -72,8 +68,9 @@ object AuthorityRank extends Logging {
         TripletFields.All
       ).cache()
       rankUpdates.foreachPartition(x => {})
+      println(s"Num partitions for newGraph: ${rankUpdates.partitions.length}")
       println("End 3, Start 4")
-      prevRankGraph = rankGraph
+      //prevRankGraph = rankGraph
       // Including the initial rank distribution in the current rank distribution
       rankGraph = newGraph.mapVertices((vid, vattr) => vattr._1).joinVertices(rankUpdates)(
         (vid, vattr, u) => {
@@ -85,13 +82,14 @@ object AuthorityRank extends Logging {
             v.rankDistribution(i) = (u(i) + alpha(v.vType.id)*v.initialRankDistribution(i))/rankDenominator(v.vType.id)
           }
           v
-      }).cache()
+      }).cache()//.repartition(rankGraph.edges.partitions.length).cache()
       rankGraph.edges.foreachPartition(x => {})
+      println(s"Num partitions for newGraph: ${rankGraph.edges.partitions.length}")
       println("End 4")
-      prevRankGraph.unpersist(false)
-      rankUpdates.unpersist(false)
-      newGraph.unpersist(false)
-      aggregateTypes.unpersist(false)
+      //prevRankGraph.unpersist(false)
+      //rankUpdates.unpersist(false)
+      //newGraph.unpersist(false)
+      //aggregateTypes.unpersist(false)
       iteration += 1
     }
     rankGraph
