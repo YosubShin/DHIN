@@ -29,9 +29,10 @@ object AuthorityRank extends Logging {
 
     while (iteration < numIter) {
       rankGraph.cache()
-      // Vertices collecting R[i,j] values from neighbors
+
       println("Start 1")
       var now = System.nanoTime
+      // Vertices collecting R[i,j] values from neighbors via aggregateMessages
       val aggregateTypes:VertexRDD[Array[Array[Double]]] = rankGraph.aggregateMessages[Array[Array[Double]]](
         ctx => {
           ctx.sendToDst({
@@ -60,6 +61,68 @@ object AuthorityRank extends Logging {
       println("End 1, Start 2")
       // Computing the value of S[i,j] for edges
       now = System.nanoTime
+      // --- VERSION 2: no new graph, instead we store Rij inside the vertex
+      // Rij is initially null to decrease messaging overhead, and is reset to null
+      // after we are done with it ----
+      // set Rij in each vertex so we don't need to construct another graph
+      rankGraph = rankGraph.joinVertices(aggregateTypes)((vid, vp, u) => {
+        val vp_ = vp.createCopy()
+        vp_.Rij = u.map(x => x.clone())
+        vp_
+      }).cache()
+      aggregateTypes.unpersist(false)
+      // compute S
+      rankGraph = rankGraph.mapTriplets(triplet => {
+        val e = EdgeProperties()
+        val srcSum = triplet.srcAttr.Rij(triplet.dstAttr.vType.id)
+        val dstSum = triplet.dstAttr.Rij(triplet.srcAttr.vType.id)
+        val r = triplet.attr.R
+        for (k <- 0 to 3) {
+          e.S(k) = (1.0/math.sqrt(srcSum(k)))*r(k)*(1.0/math.sqrt(dstSum(k)))
+        }
+        e
+      })
+        // So that we no longer have to pass the Rij field in aggregate messages,
+        // we reset it to be null here via vp.createCopy(), which copies all
+        // fields except for Rij. This is the only source of extra overhead
+        // for this approach and I'm pretty sure it's less than that incurred by
+        // creating a brand new graph.
+        .mapVertices((v, vp) => vp.createCopy()).cache()
+      // compute the new rank distribution for each class
+      val rankUpdates = rankGraph.aggregateMessages[Array[Double]](
+        ctx=>{
+          val srcType = ctx.srcAttr.vType.id
+          val dstType = ctx.dstAttr.vType.id
+          val local_lambda = broadcast_lambda.value
+          val dstMsg = Array.ofDim[Double](4)
+          val srcMsg = Array.ofDim[Double](4)
+          for (k <- 0 to 3) {
+            dstMsg(k) = local_lambda(srcType)(dstType) * ctx.attr.S(k) * ctx.srcAttr.rankDistribution(k)
+            srcMsg(k) = local_lambda(dstType)(srcType) * ctx.attr.S(k) * ctx.dstAttr.rankDistribution(k)
+          }
+          ctx.sendToDst(dstMsg)
+          ctx.sendToSrc(srcMsg)
+        },
+        (a1, a2) => a1.zip(a2).map(a => a._1 + a._2),
+        TripletFields.All
+      ).cache()
+      // update the rank distribution for each vertex
+      rankGraph = rankGraph.joinVertices(rankUpdates)(
+        (vid, vp, u) => {
+          // copies all fields of attr except for Rij, which is left as null
+          val vp_ = vp.createCopy()
+          val local_alpha = broadcast_alpha.value
+          vp_.rankDistribution = vp_.rankDistribution.zip(vp_.initialRankDistribution).map(x => x._1 + x._2*local_alpha(vp_.vType.id))
+          for(i <- 0 to 3){
+            vp_.rankDistribution(i) = (u(i) + local_alpha(vp_.vType.id)*vp_.initialRankDistribution(i))/rankDenominator(vp_.vType.id)
+          }
+          vp_
+        }).cache()
+      rankUpdates.unpersist(false)
+
+      /*
+      // --- VERSION 1 ----
+      // need to optimize this
       val newGraph = Graph(
         rankGraph.vertices.leftJoin(aggregateTypes)(
           (a, b, c) => (b, c.getOrElse(Array[Array[Double]]()))
@@ -75,6 +138,8 @@ object AuthorityRank extends Logging {
         }
         e
       }).cache()//.repartition(rankGraph.edges.partitions.length).cache()
+
+      //rankGraph.vertices.leftJoin(aggregateTypes)((a, b, c) => (b, c.getOrElse(Array[Array[Double]]())))
       newGraph.edges.foreachPartition(x => {})
       elapsed = System.nanoTime - now
       println(s"Num partitions for newGraph: ${newGraph.edges.partitions.length} ${elapsed / 1000000000.0}")
@@ -100,6 +165,7 @@ object AuthorityRank extends Logging {
         (a1, a2) => a1.zip(a2).map(a => a._1 + a._2),
         TripletFields.All
       ).cache()
+
       rankUpdates.foreachPartition(x => {})
       elapsed = System.nanoTime - now
       println(s"Num partitions for newGraph: ${rankUpdates.partitions.length} ${elapsed / 1000000000.0}")
@@ -123,6 +189,7 @@ object AuthorityRank extends Logging {
       elapsed = System.nanoTime - now
       println(s"Num partitions for newGraph: ${rankGraph.edges.partitions.length} ${elapsed / 1000000000.0}")
       println("End 4")
+      */
       //prevRankGraph.unpersist(false)
       //rankUpdates.unpersist(false)
       //newGraph.unpersist(false)
