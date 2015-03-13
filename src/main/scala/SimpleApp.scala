@@ -37,7 +37,38 @@ object SimpleApp {
     val k: Int = 4
     val numPartitions = 16
     val numTop = 100
-    
+
+    val g = GenerateGraph.generate(sc, k, numPartitions).cache()
+
+    val lambda = Array.ofDim[Double](4, 4).transform(x => x.transform(y => 0.2).array).array
+    var alpha = Array.ofDim[Double](4).transform(x => 0.1).array
+    val now = System.nanoTime
+    var ranks = AuthorityRank.run(sc, g, 5, lambda, alpha)
+    ranks.edges.foreachPartition(x => {})
+    val elapsed = System.nanoTime - now
+    println("AuthorityRank completed in : " + elapsed / 1000000000.0 + " seconds")
+
+    val orderings = Array.ofDim[Ordering[(VertexId, VertexProperties)]](4)
+    for(i <- 0 to 3){
+      val ordering = new Ordering[(VertexId, VertexProperties)] {
+        override def compare(a: (VertexId, VertexProperties), b: (VertexId, VertexProperties)) = {
+          var s: Double = a._2.rankDistribution(i)
+          var t: Double = b._2.rankDistribution(i)
+          s.compare(t)
+        }
+      }
+
+      println(s"Top overall elements for ${ResearchArea(i)}")
+      var top = ranks.vertices.top(10)(ordering)
+      top.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
+      println(s"Top authors for ${ResearchArea(i)}")
+      var topAuthors = ranks.vertices.filter(e => (e._2.vType == VertexType.AUTHOR)).top(10)(ordering)
+      topAuthors.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
+      println(s"Top venues for ${ResearchArea(i)}")
+      var topVenues = ranks.vertices.filter(e => (e._2.vType == VertexType.VENUE)).top(10)(ordering)
+      topAuthors.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
+      println(s"************************************")
+    }
     /*
     val aggregateTypes:VertexRDD[Array[Double]] = g.aggregateMessages[Array[Double]](
       ctx => {
@@ -73,10 +104,6 @@ object SimpleApp {
     newGraph.edges.collect.foreach(a => println(s"${a.srcId} ${a.dstId} ${a.attr.S}"))
     //AuthorityRank.run(g)
     */
-
-    val g = GenerateGraph.generate(sc, k, numPartitions).cache()
-
-
     /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)
@@ -93,12 +120,12 @@ object SimpleApp {
 
     //top.foreach(println)
     */
-
-
+    /*
     val vertexOrdering = new Ordering[(VertexId, Double)] {
       override def compare(a: (VertexId, Double), b: (VertexId, Double)) = a._2.compare(b._2)
     }
-
+  */
+    /*
     val vertexOrdering1 = new Ordering[(VertexId, VertexProperties)] {
       override def compare(a: (VertexId, VertexProperties), b: (VertexId, VertexProperties)) = {
         var s: Double = a._2.rankDistribution(0)
@@ -131,29 +158,12 @@ object SimpleApp {
         s.compare(t)
       }
     }
-
-    val lambda = Array.ofDim[Double](4, 4).transform(x => x.transform(y => 0.2).array).array
-    var alpha = Array.ofDim[Double](4).transform(x => 0.1).array
-    val now = System.nanoTime
-    var ranks = AuthorityRank.run(sc, g, 5, lambda, alpha)
-    ranks.edges.foreachPartition(x => {})
-    val elapsed = System.nanoTime - now
-    println("AuthorityRank done: " + elapsed / 1000000000.0)
-
-
     var top1 = ranks.vertices.top(10)(vertexOrdering2)//.map(_._1)
     top1.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
 
     var topAuthors = ranks.vertices.filter(e => (e._2.vType == VertexType.AUTHOR)).top(10)(vertexOrdering2)
     topAuthors.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
-
-  
-
-
-    //val graph = GenerateGraph.generate(sc, k, numPartitions)
-
-
-
+    */
     sc.stop()
   }
 
