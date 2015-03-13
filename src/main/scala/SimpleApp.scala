@@ -48,7 +48,6 @@ object SimpleApp {
     val elapsed = System.nanoTime - now
     println("AuthorityRank completed in : " + elapsed / 1000000000.0 + " seconds")
 
-    val orderings = Array.ofDim[Ordering[(VertexId, VertexProperties)]](4)
     for(i <- 0 to 3){
       val ordering = new Ordering[(VertexId, VertexProperties)] {
         override def compare(a: (VertexId, VertexProperties), b: (VertexId, VertexProperties)) = {

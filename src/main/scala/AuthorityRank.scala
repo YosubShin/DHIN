@@ -67,15 +67,15 @@ object AuthorityRank extends Logging {
       // set Rij in each vertex so we don't need to construct another graph
       rankGraph = rankGraph.joinVertices(aggregateTypes)((vid, vp, u) => {
         val vp_ = vp.createCopy()
-        vp_.Rij = u.map(x => x.clone())
+        vp_.sumRij = u.map(x => x.clone())
         vp_
       }).cache()
       aggregateTypes.unpersist(false)
       // compute S
       rankGraph = rankGraph.mapTriplets(triplet => {
         val e = EdgeProperties()
-        val srcSum = triplet.srcAttr.Rij(triplet.dstAttr.vType.id)
-        val dstSum = triplet.dstAttr.Rij(triplet.srcAttr.vType.id)
+        val srcSum = triplet.srcAttr.sumRij(triplet.dstAttr.vType.id)
+        val dstSum = triplet.dstAttr.sumRij(triplet.srcAttr.vType.id)
         val r = triplet.attr.R
         for (k <- 0 to 3) {
           e.S(k) = (1.0/math.sqrt(srcSum(k)))*r(k)*(1.0/math.sqrt(dstSum(k)))
@@ -139,7 +139,6 @@ object AuthorityRank extends Logging {
         e
       }).cache()//.repartition(rankGraph.edges.partitions.length).cache()
 
-      //rankGraph.vertices.leftJoin(aggregateTypes)((a, b, c) => (b, c.getOrElse(Array[Array[Double]]())))
       newGraph.edges.foreachPartition(x => {})
       elapsed = System.nanoTime - now
       println(s"Num partitions for newGraph: ${newGraph.edges.partitions.length} ${elapsed / 1000000000.0}")
