@@ -25,13 +25,14 @@ object SimpleApp {
     Logger.getLogger("org").setLevel(Level.WARN)
     Logger.getLogger("akka").setLevel(Level.WARN)
     val conf = new SparkConf()
-    val sc = new SparkContext(conf.setAppName("dhin"))
+    //val sc = new SparkContext(conf.setAppName("dhin"))
    //val sc = new SparkContext("local[8]", "DHIN", "/usr/local/Cellar/apache-spark/1.2.1/libexec",
     //  List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
-    sc.setCheckpointDir("/home/mustang/tmp")
-    //"spark://mustang12:7077", "DHIN", "/usr/local/Cellar/apache-spark/1.0.2/libexec",
-      //List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
 
+    val sc = new SparkContext("local[1]", "DHIN", "$SPARK_HOME/libexec",
+      List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
+    /*"spark://mustang12:7077"*/
+    sc.setCheckpointDir("/home/mustang/tmp")
     //.partitionBy(PartitionStrategy.EdgePartition2D)
 
     val k: Int = 4
@@ -43,7 +44,7 @@ object SimpleApp {
     val lambda = Array.ofDim[Double](4, 4).transform(x => x.transform(y => 0.2).array).array
     var alpha = Array.ofDim[Double](4).transform(x => 0.1).array
     val now = System.nanoTime
-    var ranks = AuthorityRank.run(sc, g, 5, lambda, alpha)
+    var ranks = AuthorityRank.run(sc, g, 10, lambda, alpha)
     ranks.edges.foreachPartition(x => {})
     val elapsed = System.nanoTime - now
     println("AuthorityRank completed in : " + elapsed / 1000000000.0 + " seconds")
@@ -65,7 +66,7 @@ object SimpleApp {
       topAuthors.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
       println(s"Top venues for ${ResearchArea(i)}")
       var topVenues = ranks.vertices.filter(e => (e._2.vType == VertexType.VENUE)).top(10)(ordering)
-      topAuthors.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
+      topVenues.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
       println(s"************************************")
     }
     /*
