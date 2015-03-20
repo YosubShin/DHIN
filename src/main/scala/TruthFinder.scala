@@ -12,42 +12,23 @@ object VType extends Enumeration {
   val WEBSITE, FACT, OBJECT = Value
 }
 
-/*
-trait VProp extends Serializable{
-  def vType: VType.VType
-  def value: Double
-  def other: Any
-}
-*/
-
-
-
 case class OProp(val vType: VType.VType,
                  var value: Double,
                  val property: Any = null,
                  val msg: Any = null) extends VProperty
 
-//class TFProp extends Serializable
-
-/*
-case class WebsiteProperty(override val vType: VType.VType,
-                           override var value: Double = 0.9) extends VProp
-case class FactProperty(override val vType: VType.VType,
-                        override var value: Double = 0.0) extends VProp
-case class ObjectProperty(override val vType: VType.VType,
-                          val properties: Array[String],
-                          override var value: Double = 0.0) extends VProp
-*/
-
 object AuthorityRank extends Logging {
 
+  // define our own versions of imp for our datasets
   def impBooks(o1: OProp, o2: OProp): Double = {
     (o1.property.asInstanceOf[Array[String]]
       .intersect(o2.property.asInstanceOf[Array[String]])
       ).size/o1.property.asInstanceOf[Array[String]].size - 0.5
   }
 
-  // many sources, fewer facts, even fewer objects, so maybe we should just use RDDs?
+
+
+  // some sources, many facts, some objects
 
 
   def runSingleFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int, gamma: Double, rho: Double) : Graph[OProp, Double] = {
@@ -62,11 +43,18 @@ object AuthorityRank extends Logging {
       .mapVertices((id, attr) => OProp(attr._1.vType, attr._1.value, attr._1.property))
 
     // send messages from sources to facts and vice versa
-
     var iteration = 0
+    var prevScoreGraph: Graph[OProp, Double] = null
     while(iteration < numIter) {
+      scoreGraph.cache()
       // send messages from sources to facts and vice versa
-      var scoreUpdates: VertexRDD[Double] = scoreGraph.aggregateMessages[Double](
+
+      /**
+       * -----------------------------------------------------------
+       * --------- Confidence-Trustworthiness propagation ----------
+       * -----------------------------------------------------------
+       */
+      val scoreUpdates: VertexRDD[Double] = scoreGraph.aggregateMessages[Double](
         ctx => {
           if ((ctx.srcAttr.vType == VType.FACT || ctx.srcAttr.vType == VType.WEBSITE)
             && (ctx.dstAttr.vType == VType.FACT || ctx.dstAttr.vType == VType.WEBSITE)) {
@@ -76,7 +64,8 @@ object AuthorityRank extends Logging {
         },
         (v1, v2) => v1 + v2,
         TripletFields.All
-      ).cache()
+      )
+      prevScoreGraph = scoreGraph
       scoreGraph = scoreGraph.joinVertices(scoreUpdates){
         (id, attr, msgSum) => {
           //msgSum will be null for objects
@@ -90,6 +79,9 @@ object AuthorityRank extends Logging {
         }
       }
       scoreGraph.edges.foreachPartition(x => {})
+      prevScoreGraph.vertices.unpersist(false)
+      prevScoreGraph.edges.unpersist(false)
+      iteration += 1
     }
     scoreGraph
   }
@@ -110,8 +102,15 @@ object AuthorityRank extends Logging {
 
     var iteration = 0
     while(iteration < numIter) {
+      scoreGraph.cache()
+      /**
+       * -----------------------------------------------------------
+       * --------- Confidence-Trustworthiness propagation ----------
+       * -----------------------------------------------------------
+       */
+
       // send messages from sources to facts and vice versa
-      var scoreUpdates: VertexRDD[Double] = scoreGraph.aggregateMessages[Double](
+      val scoreUpdates: VertexRDD[Double] = scoreGraph.aggregateMessages[Double](
         ctx => {
           if ((ctx.srcAttr.vType == VType.FACT || ctx.srcAttr.vType == VType.WEBSITE)
             && (ctx.dstAttr.vType == VType.FACT || ctx.dstAttr.vType == VType.WEBSITE)) {
@@ -121,15 +120,30 @@ object AuthorityRank extends Logging {
         },
         (v1, v2) => v1 + v2,
         TripletFields.All
-      ).cache()
+      )
+
       //rankUpdates.foreachPartition(x => {})
       scoreGraph = scoreGraph.joinVertices(scoreUpdates){
         (id, attr, msgSum) => {
-          //msgSum will be null for objects
+          //msgSum will be null for Objects only
+          // which is OK
           OProp(attr.vType, msgSum, attr.property)
         }
       }
-      // send facts to each object
+
+
+      /**
+       * -----------------------------------------------------------
+       * -------------- Fact Confidence calculation-----------------
+       * -----------------------------------------------------------
+       * This can be made more efficient somehow. At the moment, we
+       * send each fact to linked objects, then send the aggregated
+       * facts back to each linked fact. We then calculate the sum
+       * in Equation 6, followed by Equation 8.
+       * -----------------------------------------------------------
+       */
+
+      // Send facts to each object.
       val aggFacts = scoreGraph.aggregateMessages[Array[OProp]](
         ctx => {
           if (ctx.dstAttr.vType == VType.OBJECT && ctx.srcAttr.vType == VType.FACT){
@@ -143,7 +157,7 @@ object AuthorityRank extends Logging {
         },
         TripletFields.All
       ).cache()
-      // aggregate facts at each object
+      // Aggregate facts at each object.
       scoreGraph = scoreGraph.joinVertices(aggFacts){
         (id, attr, msgSum) => {
           // msgSum will be null for sources and facts
@@ -155,7 +169,9 @@ object AuthorityRank extends Logging {
           }
         }
       }
-      // send aggregated facts to each fact
+      // Send aggregated facts back to each fact.This is inefficient,
+      // as there are few sources and we are likely iterating through
+      // roughly half the total number of edges.
       val aggSigma = scoreGraph.aggregateMessages[Array[OProp]](
         ctx => {
           if (ctx.dstAttr.vType == VType.OBJECT && ctx.srcAttr.vType == VType.FACT){
@@ -169,31 +185,28 @@ object AuthorityRank extends Logging {
         },
         TripletFields.All
       ).cache()
-      // aggregate facts at each fact
+      // Aggregate facts at each fact and calculate the confidence of each fact.
+      // This is inefficient, especially if the number of sources is large,
+      // as we must iterate through every vertex.
       scoreGraph = scoreGraph.joinVertices(aggFacts){
         (id, attr, msgSum) => {
-          // msgSum will be null for sources and facts
-          if(msgSum == null){
-            OProp(attr.vType, attr.value, attr.property)
-          }else{
-            OProp(attr.vType, attr.value, attr.property, msgSum)
+          // msgSum will be null for sources and objects
+          if(attr.vType == VType.FACT){
+            val sum: Double = msgSum.foldLeft[Double](0.0)((d, prop) => {
+              d + prop.value*impBooks(attr, prop)
+            })
+            val sigmaStar = attr.value + rho*(sum - attr.value) // Equation 6
+            val s = 1.0 / (1.0 - math.exp(-1.0*gamma * sigmaStar)) // Equation 8
+            OProp(attr.vType, s, attr.property) // facts
+          }
+          else{
+            OProp(attr.vType, attr.value)
           }
         }
       }
-      // calculate the confidence of each fact
-      scoreGraph = scoreGraph.mapVertices((id, attr) => {
-        if(attr.vType == VType.FACT){
-          val sum: Double = attr.msg.asInstanceOf[Array[OProp]].foldLeft[Double](0.0)((d, prop) => {
-            d + prop.value*impBooks(attr, prop)
-          })
-          val sigmaStar = attr.value + rho*(sum - attr.value)
-          val s = 1.0 / (1.0 - math.exp(-1.0*gamma * sigmaStar))
-          OProp(attr.vType, s, attr.property) // facts
-        }else{
-          OProp(attr.vType, attr.value) // sources and objects
-        }
-      })
+
       scoreGraph.edges.foreachPartition(x => {})
+      iteration += 1
     }
     scoreGraph
   }
