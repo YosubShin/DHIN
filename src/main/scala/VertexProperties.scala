@@ -9,6 +9,9 @@ object VertexType extends Enumeration {
   val PAPER, VENUE, AUTHOR, TERM = Value
 }
 
+
+
+
 class VProperty() extends Serializable
 
 case class VertexProperties(k: Int, vType: VertexType.VertexType, attribute: String, l: ResearchArea.ResearchArea) extends VProperty{
