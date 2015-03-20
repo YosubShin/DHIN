@@ -77,20 +77,19 @@ object AuthorityRank extends Logging {
         (v1, v2) => v1 + v2,
         TripletFields.All
       ).cache()
-      //rankUpdates.foreachPartition(x => {})
       scoreGraph = scoreGraph.joinVertices(scoreUpdates){
         (id, attr, msgSum) => {
           //msgSum will be null for objects
           var value = 0.0
           if(attr.vType == VType.FACT){
+            // set to tau (trustworthiness)
            OProp(attr.vType, -math.log(1.0 - msgSum))
           }else {
             OProp(attr.vType, msgSum, attr.property)
           }
         }
       }
-
-
+      scoreGraph.edges.foreachPartition(x => {})
     }
     scoreGraph
   }
@@ -194,7 +193,7 @@ object AuthorityRank extends Logging {
           OProp(attr.vType, attr.value) // sources and objects
         }
       })
-
+      scoreGraph.edges.foreachPartition(x => {})
     }
     scoreGraph
   }
