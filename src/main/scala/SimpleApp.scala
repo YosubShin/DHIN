@@ -32,6 +32,8 @@ object SimpleApp {
       */
     val sc = new SparkContext(conf)
 
+    println("GHEERERER")
+
     /*val sc = new SparkContext("local[1]", "DHIN", "$SPARK_HOME/libexec",
       List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
     */
@@ -42,7 +44,9 @@ object SimpleApp {
     val k: Int = 4
     val numPartitions = 32
     val numTop = 100
+    println("GHEERERER2")
     val b = GenerateGraph.generateTruthFinder(sc, "/home/mustang/clean_stocks/stock-2011-07-01", 0, 16)
+    println("GHEERERER3")
     /*
     val g = GenerateGraph.generate(sc, k, numPartitions).partitionBy(PartitionStrategy.EdgePartition2D).cache()
 

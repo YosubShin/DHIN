@@ -10,8 +10,11 @@ object GenerateGraph {
 
 
   def generateTruthFinder(sc: SparkContext, path: String, k:Int, numPartitions:Int): Graph[OProp, Double] = {
+    println("GHEERERER4")
     val fileData = sc.textFile(path, numPartitions)
+    println("GHEERERER5")
     val groundTruthFileData = sc.textFile(path+"-nasdaq-com")
+    println("GHEERERER6")
     fileData.collect.foreach(println)
 
 
