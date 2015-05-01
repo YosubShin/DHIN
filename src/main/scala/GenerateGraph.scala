@@ -8,6 +8,17 @@ import scala.util.Random
 
 object GenerateGraph {
 
+
+  def generateTruthFinder(sc: SparkContext, path: String, k:Int, numPartitions:Int): Graph[OProp, Double] = {
+    val fileData = sc.textFile(path, numPartitions)
+    val groundTruthFileData = sc.textFile(path+"-nasdaq-com")
+    fileData.collect.foreach(println)
+
+
+
+    null
+  }
+
   def generate(sc: SparkContext, k:Int, numPartitions:Int): Graph[VertexProperties, EdgeProperties] = {
     var g = GenerateGraph.readAndPreProcess(sc, k, numPartitions)
     //var g = generateToyGraph(sc, k, numPartitions)

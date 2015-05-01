@@ -42,7 +42,8 @@ object SimpleApp {
     val k: Int = 4
     val numPartitions = 32
     val numTop = 100
-
+    val b = GenerateGraph.generateTruthFinder(sc, "/home/mustang/clean_stocks/stock-2011-07-01", 0, 16)
+    /*
     val g = GenerateGraph.generate(sc, k, numPartitions).partitionBy(PartitionStrategy.EdgePartition2D).cache()
 
     val lambda = Array.ofDim[Double](4, 4).transform(x => x.transform(y => 0.2).array).array
@@ -74,6 +75,7 @@ object SimpleApp {
       topVenues.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
       println(s"************************************")
     }
+    */
     /*
     val aggregateTypes:VertexRDD[Array[Double]] = g.aggregateMessages[Array[Double]](
       ctx => {
