@@ -1,4 +1,4 @@
-import org.apache.spark.graphx.{TripletFields, VertexRDD, Graph}
+import org.apache.spark.graphx.{EdgeDirection, TripletFields, VertexRDD, Graph}
 import org.apache.spark.{SparkContext, Logging}
 
 import scala.collection.mutable.ListBuffer
@@ -17,89 +17,107 @@ case class OProp(val vType: VType.VType,
                  val property: Any = null,
                  val msg: Any = null) extends VProperty
 
-object AuthorityRank extends Logging {
-
-  // define our own versions of imp for our datasets
+// !!!!! edges must be from source to fact, and from fact to object !!!!!
+object TruthFinder extends Logging {
+  // We will define our own versions of imp for our datasets
   def impBooks(o1: OProp, o2: OProp): Double = {
     (o1.property.asInstanceOf[Array[String]]
       .intersect(o2.property.asInstanceOf[Array[String]])
       ).size/o1.property.asInstanceOf[Array[String]].size - 0.5
   }
 
-
-
   // some sources, many facts, some objects
-
-
-  def runSingleFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int, gamma: Double, rho: Double) : Graph[OProp, Double] = {
+  def runSingleFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int) : Graph[OProp, Double] = {
     // edge between Facts and Websites, and Facts and Objects
-
-
     var scoreGraph: Graph[OProp, Double] = graph
       // Associate the degree with each vertex
       .outerJoinVertices(graph.outDegrees) { (vid, vdata, deg) => (vdata, deg.getOrElse(0)) }
       // Set the weight on the edges based on the degree
-      .mapTriplets( e => 1.0 / e.srcAttr._2, TripletFields.Src )
-      .mapVertices((id, attr) => OProp(attr._1.vType, attr._1.value, attr._1.property))
-
+      .mapTriplets(e => {
+      if(e.srcAttr._1.vType == VType.WEBSITE){
+        1.0 / e.dstAttr._2 // from source to fact
+      } else {
+        0.0 // from fact to object
+      }
+    }, TripletFields.Src ).mapVertices((id, attr) => {
+      if(attr._1.vType == VType.WEBSITE){
+        OProp(attr._1.vType, 0.9, attr._1.property)
+      }else{
+        OProp(attr._1.vType, attr._1.value, attr._1.property)
+      }
+    })
     // send messages from sources to facts and vice versa
     var iteration = 0
     var prevScoreGraph: Graph[OProp, Double] = null
+    var activeWebsites: VertexRDD[Double] = graph.vertices.filter(v => v._2.vType == VType.WEBSITE).mapValues(x => 0.0)
+    var activeFacts: VertexRDD[Double] = null
+    // !!!!!! START TIMER HERE !!!!!!
     while(iteration < numIter) {
       scoreGraph.cache()
       // send messages from sources to facts and vice versa
-
       /**
        * -----------------------------------------------------------
        * --------- Confidence-Trustworthiness propagation ----------
        * -----------------------------------------------------------
        */
-      val scoreUpdates: VertexRDD[Double] = scoreGraph.aggregateMessages[Double](
+      // propagate from sources to facts
+      // returns rdd indexed by facts
+      activeFacts = scoreGraph.mapReduceTriplets[Double](
         ctx => {
-          if ((ctx.srcAttr.vType == VType.FACT || ctx.srcAttr.vType == VType.WEBSITE)
-            && (ctx.dstAttr.vType == VType.FACT || ctx.dstAttr.vType == VType.WEBSITE)) {
-            ctx.sendToDst(ctx.srcAttr.value * ctx.attr)
-            ctx.sendToSrc(ctx.dstAttr.value * ctx.attr)
+          if(ctx.srcAttr.vType == VType.WEBSITE){
+            // will always be here
+            Iterator((ctx.dstId, -math.log(1.0 - ctx.srcAttr.value)))
+          }else{
+            Iterator.empty
           }
         },
         (v1, v2) => v1 + v2,
-        TripletFields.All
-      )
+        Some((activeWebsites, EdgeDirection.Out))
+      ).cache()
       prevScoreGraph = scoreGraph
-      scoreGraph = scoreGraph.joinVertices(scoreUpdates){
-        (id, attr, msgSum) => {
-          //msgSum will be null for objects
-          var value = 0.0
-          if(attr.vType == VType.FACT){
-            // set to tau (trustworthiness)
-           OProp(attr.vType, -math.log(1.0 - msgSum))
-          }else {
-            OProp(attr.vType, msgSum, attr.property)
+      // join here -- need to update facts with new message sum
+      scoreGraph = scoreGraph.joinVertices(activeFacts){
+        (id, attr, msgSum) => OProp(attr.vType, 1.0 - math.exp(-1.0*msgSum))
+      }
+      prevScoreGraph.vertices.unpersist(blocking = false)
+      prevScoreGraph.edges.unpersist(blocking = false)
+      // propagate from facts to sources
+      activeWebsites = scoreGraph.mapReduceTriplets[Double](
+        ctx => {
+          if(ctx.srcAttr.vType == VType.FACT){
+            // will always be here
+            Iterator((ctx.srcId, ctx.srcAttr.value * ctx.attr))
+          }else{
+            Iterator.empty
           }
-        }
+        },
+        (v1, v2) => v1 + v2,
+        Some((activeFacts, EdgeDirection.In))
+      ).cache()
+      prevScoreGraph = scoreGraph
+      // join here -- need to update websites with new trustworthiness
+      // from Lemma 1 confidence score of a fact is the sum of the
+      // trustworthiness scores of websites providing f
+      scoreGraph = scoreGraph.joinVertices(activeWebsites){
+        (id, attr, msgSum) => OProp(attr.vType, msgSum, attr.property)
       }
       scoreGraph.edges.foreachPartition(x => {})
-      prevScoreGraph.vertices.unpersist(false)
-      prevScoreGraph.edges.unpersist(false)
+      prevScoreGraph.vertices.unpersist(blocking = false)
+      prevScoreGraph.edges.unpersist(blocking = false)
       iteration += 1
     }
     scoreGraph
   }
 
-
   def runMultiFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int, gamma: Double, rho: Double) : Graph[OProp, Double] = {
     // edge between Facts and Websites, and Facts and Objects
-
-
     var scoreGraph: Graph[OProp, Double] = graph
       // Associate the degree with each vertex
       .outerJoinVertices(graph.outDegrees) { (vid, vdata, deg) => (vdata, deg.getOrElse(0)) }
       // Set the weight on the edges based on the degree
       .mapTriplets( e => 1.0 / e.srcAttr._2, TripletFields.Src )
       .mapVertices((id, attr) => OProp(attr._1.vType, attr._1.value, attr._1.property))
-
     // send messages from sources to facts and vice versa
-
     var iteration = 0
     while(iteration < numIter) {
       scoreGraph.cache()
@@ -108,7 +126,6 @@ object AuthorityRank extends Logging {
        * --------- Confidence-Trustworthiness propagation ----------
        * -----------------------------------------------------------
        */
-
       // send messages from sources to facts and vice versa
       val scoreUpdates: VertexRDD[Double] = scoreGraph.aggregateMessages[Double](
         ctx => {
@@ -121,17 +138,14 @@ object AuthorityRank extends Logging {
         (v1, v2) => v1 + v2,
         TripletFields.All
       )
-
       //rankUpdates.foreachPartition(x => {})
-      scoreGraph = scoreGraph.joinVertices(scoreUpdates){
+      scoreGraph = scoreGraph.joinVertices(scoreUpdates) {
         (id, attr, msgSum) => {
-          //msgSum will be null for Objects only
+          // msgSum will be null for Objects only
           // which is OK
           OProp(attr.vType, msgSum, attr.property)
         }
       }
-
-
       /**
        * -----------------------------------------------------------
        * -------------- Fact Confidence calculation-----------------
@@ -169,7 +183,7 @@ object AuthorityRank extends Logging {
           }
         }
       }
-      // Send aggregated facts back to each fact.This is inefficient,
+      // Send aggregated facts back to each fact. This is inefficient,
       // as there are few sources and we are likely iterating through
       // roughly half the total number of edges.
       val aggSigma = scoreGraph.aggregateMessages[Array[OProp]](

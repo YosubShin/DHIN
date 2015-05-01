@@ -25,26 +25,31 @@ object SimpleApp {
     Logger.getLogger("org").setLevel(Level.WARN)
     Logger.getLogger("akka").setLevel(Level.WARN)
     val conf = new SparkConf()
+    /*
     //val sc = new SparkContext(conf.setAppName("dhin"))
-   //val sc = new SparkContext("local[8]", "DHIN", "/usr/local/Cellar/apache-spark/1.2.1/libexec",
-    //  List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
-
-    val sc = new SparkContext("local[1]", "DHIN", "$SPARK_HOME/libexec",
+    val sc = new SparkContext("local[8]", "DHIN", "/usr/local/Cellar/apache-spark/1.2.1/libexec",
       List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
+      */
+    val sc = new SparkContext(conf)
+
+    /*val sc = new SparkContext("local[1]", "DHIN", "$SPARK_HOME/libexec",
+      List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
+    */
     /*"spark://mustang12:7077"*/
     sc.setCheckpointDir("/home/mustang/tmp")
     //.partitionBy(PartitionStrategy.EdgePartition2D)
 
     val k: Int = 4
-    val numPartitions = 16
+    val numPartitions = 32
     val numTop = 100
 
-    val g = GenerateGraph.generate(sc, k, numPartitions).cache()
+    val g = GenerateGraph.generate(sc, k, numPartitions).partitionBy(PartitionStrategy.EdgePartition2D).cache()
 
     val lambda = Array.ofDim[Double](4, 4).transform(x => x.transform(y => 0.2).array).array
     var alpha = Array.ofDim[Double](4).transform(x => 0.1).array
     val now = System.nanoTime
-    var ranks = AuthorityRank.run(sc, g, 10, lambda, alpha)
+    println("Starting AuthorityRank")
+    var ranks = AuthorityRank.run(sc, g, 5, lambda, alpha)
     ranks.edges.foreachPartition(x => {})
     val elapsed = System.nanoTime - now
     println("AuthorityRank completed in : " + elapsed / 1000000000.0 + " seconds")
