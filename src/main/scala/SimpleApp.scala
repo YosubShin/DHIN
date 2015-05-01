@@ -38,7 +38,7 @@ object SimpleApp {
       List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
     */
     /*"spark://mustang12:7077"*/
-    sc.setCheckpointDir("/home/mustang/tmp")
+    //sc.setCheckpointDir("/home/mustang/tmp")
     //.partitionBy(PartitionStrategy.EdgePartition2D)
 
     val k: Int = 4
