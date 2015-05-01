@@ -60,12 +60,15 @@ object TruthFinder extends Logging {
        * --------- Confidence-Trustworthiness propagation ----------
        * -----------------------------------------------------------
        */
-      // propagate from sources to facts
-      // returns rdd indexed by facts
+      // Propagate from sources to facts using Equation (3).
+      // We only want to send from websites, so we pass them in as the
+      // active vertex set.
+      // Returns rdd of facts which we use as the active vertex set in
+      // the next mapReduceTriplets
       activeFacts = scoreGraph.mapReduceTriplets[Double](
         ctx => {
           if(ctx.srcAttr.vType == VType.WEBSITE){
-            // will always be here
+            // will always be here due to active vertex set
             Iterator((ctx.dstId, -math.log(1.0 - ctx.srcAttr.value)))
           }else{
             Iterator.empty
@@ -75,7 +78,8 @@ object TruthFinder extends Logging {
         Some((activeWebsites, EdgeDirection.Out))
       ).cache()
       prevScoreGraph = scoreGraph
-      // join here -- need to update facts with new message sum
+      // Join here -- need to update facts with new message sum
+      // using Equations (5) and (7)
       scoreGraph = scoreGraph.joinVertices(activeFacts){
         (id, attr, msgSum) => OProp(attr.vType, 1.0 - math.exp(-1.0*msgSum))
       }
@@ -85,7 +89,7 @@ object TruthFinder extends Logging {
       activeWebsites = scoreGraph.mapReduceTriplets[Double](
         ctx => {
           if(ctx.srcAttr.vType == VType.FACT){
-            // will always be here
+            // will always be here due to active vertex set
             Iterator((ctx.srcId, ctx.srcAttr.value * ctx.attr))
           }else{
             Iterator.empty
@@ -96,8 +100,6 @@ object TruthFinder extends Logging {
       ).cache()
       prevScoreGraph = scoreGraph
       // join here -- need to update websites with new trustworthiness
-      // from Lemma 1 confidence score of a fact is the sum of the
-      // trustworthiness scores of websites providing f
       scoreGraph = scoreGraph.joinVertices(activeWebsites){
         (id, attr, msgSum) => OProp(attr.vType, msgSum, attr.property)
       }
