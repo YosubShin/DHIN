@@ -24,7 +24,7 @@ object SimpleApp {
     println("Main")
     Logger.getLogger("org").setLevel(Level.WARN)
     Logger.getLogger("akka").setLevel(Level.WARN)
-    val conf = new SparkConf().setMaster("spark://mustang12:7077")
+    val conf = new SparkConf().setMaster("spark://mustang12:7077").setAppName("dhin")
     /*
     //val sc = new SparkContext(conf.setAppName("dhin"))
     val sc = new SparkContext("local[8]", "DHIN", "/usr/local/Cellar/apache-spark/1.2.1/libexec",
