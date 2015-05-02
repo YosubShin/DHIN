@@ -88,10 +88,11 @@ object GenerateGraph {
 
     // vertices is either (hash of source, default value), or (hash of object, fact)
 
-    data.collect.foreach(x => println(x._2 + x._3.toString()))
+    //data.collect.foreach(x => println(x._2 + x._3.toString()))
 
     val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9, x._1)))
       .union(data.map(x => (stringHash(x._2 + x._3.toString()), OProp(VType.FACT, x._3, x._2)))))
+      .union(data.map(x => (stringHash(x._2), OProp(VType.OBJECT, 0.0))))
       .repartition(numPartitions)
 
     /*val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9, x._1)))
@@ -99,6 +100,7 @@ object GenerateGraph {
       .repartition(numPartitions)
     */
     val edges = data.map(x => Edge(stringHash(x._1), stringHash(x._2 + x._3.toString()), 0.0))
+      .union(data.map(x => Edge(stringHash(x._2 + x._3.toString()), stringHash(x._2), 0.0)))
       .repartition(numPartitions)
 
     val graph = Graph[OProp, Double](vertices, edges)

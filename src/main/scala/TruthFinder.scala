@@ -27,7 +27,7 @@ object TruthFinder extends Logging {
   }
 
   // some sources, many facts, some objects
-  def runSingleFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int) : Graph[OProp, Double] = {
+  def runSingleFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int, gamma: Double, rho: Double) : Graph[OProp, Double] = {
     // edge between Facts and Websites, and Facts and Objects
 
 
@@ -77,58 +77,6 @@ object TruthFinder extends Logging {
       // active vertex set.
       // Returns rdd of facts which we use as the active vertex set in
       // the next mapReduceTriplets
-
-
-      activeFacts = scoreGraph.mapReduceTriplets[Double](
-        ctx => {
-          if(ctx.srcAttr.vType == VType.WEBSITE){
-            // will always be here due to active vertex set
-            Iterator((ctx.dstId, ctx.srcAttr.value))
-          }else{
-            Iterator.empty
-          }
-        },
-        (v1, v2) => v1 + v2,
-        Some((activeWebsites, EdgeDirection.Out))
-      ).cache()
-      //activeFacts.collect.foreach(println)
-
-      println("*****ASDASD1******")
-
-      prevScoreGraph = scoreGraph
-      // Join here -- need to update facts with new message sum
-      // using Equations (5) and (7)
-      scoreGraph = scoreGraph.joinVertices(activeFacts){
-        (id, attr, msgSum) => OProp(attr.vType, msgSum, attr.property)
-      }
-      scoreGraph.vertices.collect.foreach(println)
-      prevScoreGraph.vertices.unpersist(blocking = false)
-      prevScoreGraph.edges.unpersist(blocking = false)
-      // propagate from facts to sources
-      activeWebsites = scoreGraph.mapReduceTriplets[Double](
-        ctx => {
-          if(ctx.srcAttr.vType == VType.FACT){
-            // will always be here due to active vertex set
-            Iterator((ctx.srcId, ctx.srcAttr.value * ctx.attr))
-          }else{
-            Iterator.empty
-          }
-        },
-        (v1, v2) => v1 + v2,
-        Some((activeFacts, EdgeDirection.In))
-      ).cache()
-      prevScoreGraph = scoreGraph
-      // join here -- need to update websites with new trustworthiness
-      scoreGraph = scoreGraph.joinVertices(activeWebsites){
-        (id, attr, msgSum) => OProp(attr.vType, msgSum, attr.property)
-      }
-      scoreGraph.edges.foreachPartition(x => {})
-      prevScoreGraph.vertices.unpersist(blocking = false)
-      prevScoreGraph.edges.unpersist(blocking = false)
-      iteration += 1
-
-
-      /*
       activeFacts = scoreGraph.mapReduceTriplets[Double](
         ctx => {
           if(ctx.srcAttr.vType == VType.WEBSITE){
@@ -176,7 +124,6 @@ object TruthFinder extends Logging {
       prevScoreGraph.vertices.unpersist(blocking = false)
       prevScoreGraph.edges.unpersist(blocking = false)
       iteration += 1
-      */
     }
     scoreGraph
 
