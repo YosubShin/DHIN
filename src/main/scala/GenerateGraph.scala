@@ -21,14 +21,18 @@ object GenerateGraph {
         }else {
           var fact = split(2)
           if (!fact.isEmpty()) {
-            val splits = fact.split("%")
+            var splits = fact.split("%")
             if (splits.size != 0) {
-              fact = splits(0).split("u")(0)
-              fact = fact.stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
-              if (fact.isEmpty()) {
+              splits = splits(0).split("u")
+              if (splits.size != 0) {
+                fact = splits(0).stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
+                if (fact.isEmpty()) {
+                  (source, obj, Double.MaxValue)
+                } else {
+                  (source, obj, fact.toDouble)
+                }
+              }else{
                 (source, obj, Double.MaxValue)
-              } else {
-                (source, obj, fact.toDouble)
               }
             } else {
               (source, obj, Double.MaxValue)
