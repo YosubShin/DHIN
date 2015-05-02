@@ -16,23 +16,26 @@ object GenerateGraph {
         val split = str.split('\t')
         val source = split(0)
         val obj = split(1)
-        var fact = split(2)
-        if(!fact.isEmpty()) {
-          val splits = fact.split("%")
-          if(splits.size == 0) {
-            fact = fact.stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
-            if (fact.isEmpty()) {
-              (source, obj, Double.MaxValue)
+        if(split.size < 3){
+          (source, obj, Double.MaxValue)
+        }else {
+          var fact = split(2)
+          if (!fact.isEmpty()) {
+            val splits = fact.split("%")
+            if (splits.size == 0) {
+              fact = fact.stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
+              if (fact.isEmpty()) {
+                (source, obj, Double.MaxValue)
+              } else {
+                (source, obj, fact.toDouble)
+              }
             } else {
-              (source, obj, fact.toDouble)
+              (source, obj, Double.MaxValue)
             }
-          }else{
+          } else {
             (source, obj, Double.MaxValue)
           }
-        }else{
-          (source, obj, Double.MaxValue)
         }
-
 
       }).collect.foreach(println)
     println("GHEERERER5")
