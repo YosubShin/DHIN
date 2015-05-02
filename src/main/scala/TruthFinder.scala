@@ -40,11 +40,12 @@ object TruthFinder extends Logging {
         0.0 // from fact to object
       }
     }, TripletFields.Src ).mapVertices((id, attr) => {
-      if(attr._1.vType == VType.WEBSITE){
+      /*if(attr._1.vType == VType.WEBSITE){
         OProp(attr._1.vType, 0.9, attr._1.property)
       }else{
         OProp(attr._1.vType, attr._1.value, attr._1.property)
-      }
+      }*/
+      attr._1
     })
     // send messages from sources to facts and vice versa
     var iteration = 0

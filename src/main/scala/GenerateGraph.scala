@@ -89,11 +89,16 @@ object GenerateGraph {
     // vertices is either (hash of source, default value), or (hash of object, fact)
     val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
       .union(data.map(x => (stringHash(x._2), OProp(VType.FACT, x._3)))))
+      .repartition(numPartitions)
     val edges = data.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
+      .repartition(numPartitions)
 
     val graph = Graph[OProp, Double](vertices, edges)
 
-    val groundTruth = VertexRDD(parseStockFileGT(sc, path+"-nasdaq-com", numPartitions).map(x => (stringHash(x._1), x._2)))
+
+    val groundTruth = VertexRDD(parseStockFileGT(sc, path+"-nasdaq-com", numPartitions)
+      .map(x => (stringHash(x._1), x._2)).repartition(numPartitions))
+
     /*val verticesGT = VertexRDD(groundTruth.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
       .union(groundTruth.map(x => (stringHash(x._2), OProp(VType.FACT, x._3)))))
     val edgesGT = groundTruth.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
@@ -103,10 +108,11 @@ object GenerateGraph {
     graphGT.edges.collect.foreach(println)
     println(graphGT.edges.count)
     */
+    /*
     groundTruth.collect.foreach(println)
     println(groundTruth.count)
     println(graph.edges.count)
-
+    */
     (graph, groundTruth)//, graphGT)
   }
 
