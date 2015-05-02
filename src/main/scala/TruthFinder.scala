@@ -97,11 +97,13 @@ object TruthFinder extends Logging {
       //activeFacts.collect.foreach(println)
       println("*****ASDASD1******")
       prevScoreGraph = scoreGraph
+      activeFacts.foreachPartition(x => {})
       // Join here -- need to update facts with new message sum
       // using Equations (5) and (7)
       scoreGraph = scoreGraph.joinVertices(activeFacts){
         (id, attr, msgSum) => OProp(attr.vType, 1.0 - math.exp(-1.0*msgSum), attr.property)
       }
+      scoreGraph.edges.foreachPartition(x => {})
       prevScoreGraph.vertices.unpersist(blocking = false)
       prevScoreGraph.edges.unpersist(blocking = false)
       println("*****ASDASD2******")
@@ -113,12 +115,14 @@ object TruthFinder extends Logging {
         (v1, v2) => v1 ++ v2,
         Some((activeFacts, EdgeDirection.Out))
       ).cache()
+      activeObjects.foreachPartition(x => {})
       prevScoreGraph = scoreGraph
       // join here -- need to update websites with new trustworthiness
       println("*****ASDASD3******")
       scoreGraph = scoreGraph.joinVertices(activeObjects){
         (id, attr, aggFacts) => OProp(attr.vType, attr.value, attr.property, aggFacts)
       }
+      scoreGraph.edges.foreach(x => {})
       // send aggregate facts from objects back to facts
       val activeFactsAgg = scoreGraph.mapReduceTriplets[Array[OProp]](
         ctx => {
@@ -127,6 +131,7 @@ object TruthFinder extends Logging {
         (v1, v2) => v1 ++ v2,
         Some((activeObjects, EdgeDirection.In))
       ).cache()
+      activeFactsAgg.foreachPartition(x => {})
       println("*****ASDASD4******")
       // Aggregate facts at each fact and calculate the confidence of each fact.
       scoreGraph = scoreGraph.joinVertices(activeFactsAgg){
@@ -139,6 +144,7 @@ object TruthFinder extends Logging {
           OProp(attr.vType, s, attr.property) // facts
         }
       }
+      scoreGraph.edges.foreachPartition(x => {})
 
       println("*****ASDASD5******")
       // send fact confidence back to websites
@@ -154,6 +160,7 @@ object TruthFinder extends Logging {
         (v1, v2) => v1 + v2,
         Some((activeFacts, EdgeDirection.In))
       ).cache()
+      activeWebsites.foreachPartition(x => {})
       prevScoreGraph = scoreGraph
       println("*****ASDASD5******")
       // join here -- need to update websites with new trustworthiness
@@ -166,7 +173,6 @@ object TruthFinder extends Logging {
       iteration += 1
     }
     scoreGraph
-
   }
 
   def runMultiFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int, gamma: Double, rho: Double) : Graph[OProp, Double] = {
