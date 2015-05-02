@@ -16,13 +16,18 @@ object GenerateGraph {
         val split = str.split('\t')
         val source = split(0)
         val obj = split(1)
-        var fact = split(2).split("%")(0)
+        var fact = split(2)
         if(!fact.isEmpty()) {
-          fact = fact.stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
-          if(fact.isEmpty()){
+          fact = fact.split("%")(0)
+          if(!fact.isEmpty()) {
+            fact = fact.stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
+            if (fact.isEmpty()) {
+              (source, obj, Double.MaxValue)
+            } else {
+              (source, obj, fact.toDouble)
+            }
+          }else{
             (source, obj, Double.MaxValue)
-          }else {
-            (source, obj, fact.toDouble)
           }
         }else{
           (source, obj, Double.MaxValue)
