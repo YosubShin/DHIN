@@ -20,7 +20,7 @@ object GenerateGraph {
         if(!fact.isEmpty()) {
           val splits = fact.split("%")
           if(splits.size == 0) {
-            fact = stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
+            fact = fact.stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
             if (fact.isEmpty()) {
               (source, obj, Double.MaxValue)
             } else {
