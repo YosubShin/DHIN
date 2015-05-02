@@ -25,7 +25,7 @@ object GenerateGraph {
             if (splits.size != 0) {
               splits = splits(0).split("u")
               if (splits.size != 0) {
-                fact = splits(0).stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
+                fact = splits(0).stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")").stripSuffix("-")
                 if (fact.isEmpty()) {
                   (source, obj, Double.MaxValue)
                 } else {
