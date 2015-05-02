@@ -16,7 +16,7 @@ object GenerateGraph {
         val split = str.split('\t')
         val source = split(0)
         val obj = split(1)
-        val fact = split(2).stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
+        val fact = split(2).stripPrefix("(").split("%")(0).stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
           if(fact.isEmpty()){
             (source, obj, Double.MaxValue)
           }else {
