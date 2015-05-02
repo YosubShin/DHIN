@@ -31,12 +31,16 @@ object TruthFinder extends Logging {
     // edge between Facts and Websites, and Facts and Objects
 
 
-    graph.triplets.foreach(x => println(x.dstAttr))
 
-    var scoreGraph: Graph[OProp, Double] = graph
+
+    //var scoreGraph: Graph[OProp, Double] = graph
+    var g = graph
       // Associate the degree with each vertex
       .outerJoinVertices(graph.outDegrees) { (vid, vdata, deg) => (vdata, deg.getOrElse(0)) }
+    g.triplets.collect.foreach(x => println(x.dstAttr + " " + println(x.dstAttr._2)))
+    null
       // Set the weight on the edges based on the degree
+      /*
       .mapTriplets(e => {
       if(e.srcAttr._1.vType == VType.WEBSITE){
         1.0 / e.dstAttr._2 // from source to fact
@@ -51,6 +55,7 @@ object TruthFinder extends Logging {
       }*/
       attr._1
     })
+
     // send messages from sources to facts and vice versa
     var iteration = 0
     var prevScoreGraph: Graph[OProp, Double] = null
@@ -114,6 +119,7 @@ object TruthFinder extends Logging {
       iteration += 1
     }
     scoreGraph
+    */
   }
 
   def runMultiFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int, gamma: Double, rho: Double) : Graph[OProp, Double] = {
