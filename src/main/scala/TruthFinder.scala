@@ -31,7 +31,7 @@ object TruthFinder extends Logging {
   }
 
   // some sources, many facts, some objects
-  def runSingleFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int, gamma: Double, rho: Double) : Graph[OProp, Double] = {
+  def runSingleFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int, gamma: Double = 0.3, rho: Double = 0.5) : Graph[OProp, Double] = {
     // edge between Facts and Websites, and Facts and Objects
 
 
