@@ -29,6 +29,10 @@ object TruthFinder extends Logging {
   // some sources, many facts, some objects
   def runSingleFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int) : Graph[OProp, Double] = {
     // edge between Facts and Websites, and Facts and Objects
+
+
+    graph.triplets.foreach(x => println(x.dstAttr))
+
     var scoreGraph: Graph[OProp, Double] = graph
       // Associate the degree with each vertex
       .outerJoinVertices(graph.outDegrees) { (vid, vdata, deg) => (vdata, deg.getOrElse(0)) }
