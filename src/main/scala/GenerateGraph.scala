@@ -54,7 +54,6 @@ object GenerateGraph {
     val data = parseStockFile(sc, path, numPartitions)
 
     // vertices is either (hash of source, default value), or (hash of object, fact)
-
     val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
       .union(data.map(x => (stringHash(x._2), OProp(VType.FACT, x._3)))))
     val edges = data.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
@@ -62,9 +61,9 @@ object GenerateGraph {
     val graph = Graph[OProp, Double](vertices, edges)
 
     var groundTruth = parseStockFile(sc, path+"-nasdaq-com", numPartitions)
-    val verticesGT = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
-      .union(data.map(x => (stringHash(x._2), OProp(VType.FACT, x._3)))))
-    val edgesGT = data.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
+    val verticesGT = VertexRDD(groundTruth.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
+      .union(groundTruth.map(x => (stringHash(x._2), OProp(VType.FACT, x._3)))))
+    val edgesGT = groundTruth.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
 
     val graphGT = Graph[OProp, Double](verticesGT, edgesGT)
 
