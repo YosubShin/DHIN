@@ -96,7 +96,7 @@ object GenerateGraph {
       .union(data.map(x => (stringHash(x._2), OProp(VType.FACT, x._3, x._2)))))
       .repartition(numPartitions)
     */
-    val edges = data.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
+    val edges = data.map(x => Edge(stringHash(x._1), stringHash(x._2 + x._3.toString()), 0.0))
       .repartition(numPartitions)
 
     val graph = Graph[OProp, Double](vertices, edges)
