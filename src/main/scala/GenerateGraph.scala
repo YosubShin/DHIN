@@ -43,13 +43,46 @@ object GenerateGraph {
     })
   }
 
+  def parseStockFileGT(sc: SparkContext, path: String, numPartitions:Int) : RDD[(String, Double)] = {
+    val fileData = sc.textFile(path)//.collect.foreach(x => println("****" + x))//"file:///home/mustang/roadNet-CA.txt").collect.foreach(println)
+    fileData.map(str => {
+      val split = str.split('\t')
+      val obj = split(0)
+      if(split.size < 2){
+        (obj, Double.MaxValue)
+      }else {
+        var fact = split(1)
+        if (!fact.isEmpty()) {
+          var splits = fact.split("%")
+          if (splits.size != 0) {
+            splits = splits(0).split("u")
+            if (splits.size != 0) {
+              fact = splits(0).stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")").stripSuffix("-")
+              if (fact.isEmpty()) {
+                (obj, Double.MaxValue)
+              } else {
+                (obj, fact.toDouble)
+              }
+            }else{
+              (obj, Double.MaxValue)
+            }
+          } else {
+            (obj, Double.MaxValue)
+          }
+        } else {
+          (obj, Double.MaxValue)
+        }
+      }
+    })
+  }
+
 
   def stringHash(str: String) : VertexId = {
     str.toLowerCase.replace(" ", "").hashCode.toLong
   }
 
 
-  def generateTruthFinder(sc: SparkContext, path: String, numPartitions:Int): (Graph[OProp, Double], Graph[OProp, Double]) = {
+  def generateTruthFinder(sc: SparkContext, path: String, numPartitions:Int): (Graph[OProp, Double], VertexRDD[Double]) = {
 
     val data = parseStockFile(sc, path, numPartitions)
 
@@ -60,8 +93,8 @@ object GenerateGraph {
 
     val graph = Graph[OProp, Double](vertices, edges)
 
-    var groundTruth = parseStockFile(sc, path+"-nasdaq-com", numPartitions)
-    val verticesGT = VertexRDD(groundTruth.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
+    val groundTruth = VertexRDD(parseStockFileGT(sc, path+"-nasdaq-com", numPartitions).map(x => (stringHash(x._1), x._2)))
+    /*val verticesGT = VertexRDD(groundTruth.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
       .union(groundTruth.map(x => (stringHash(x._2), OProp(VType.FACT, x._3)))))
     val edgesGT = groundTruth.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
 
@@ -69,9 +102,12 @@ object GenerateGraph {
 
     graphGT.edges.collect.foreach(println)
     println(graphGT.edges.count)
+    */
+    groundTruth.foreach(println)
+    println(groundTruth.count)
     println(graph.edges.count)
 
-    (graph, graphGT)
+    (graph, groundTruth)//, graphGT)
   }
 
   def generate(sc: SparkContext, k:Int, numPartitions:Int): Graph[VertexProperties, EdgeProperties] = {
