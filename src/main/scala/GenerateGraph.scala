@@ -16,12 +16,17 @@ object GenerateGraph {
         val split = str.split('\t')
         val source = split(0)
         val obj = split(1)
-        val fact = split(2).stripPrefix("(").split("%")(0).stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
+        if(!split(2).isEmpty()) {
+          val fact = split(2).stripPrefix("(").split("%")(0).stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
           if(fact.isEmpty()){
             (source, obj, Double.MaxValue)
           }else {
             (source, obj, fact.toDouble)
           }
+        }else{
+          (source, obj, Double.MaxValue)
+        }
+
 
       }).collect.foreach(println)
     println("GHEERERER5")
