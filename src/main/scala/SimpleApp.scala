@@ -45,7 +45,7 @@ object SimpleApp {
     val numPartitions = 32
     val numTop = 100
     println("GHEERERER2")
-    val b = GenerateGraph.generateTruthFinder(sc, "/home/mustang/clean_stocks/data", 0, 16)
+    val b = GenerateGraph.generateTruthFinder(sc, "/home/mustang/clean_stocks/data", 16)
     //stock-2011-07-01
     println("GHEERERER3")
     /*

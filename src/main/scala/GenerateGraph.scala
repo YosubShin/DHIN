@@ -3,67 +3,89 @@ import org.apache.log4j.Logger
 import org.apache.log4j.Level
 import org.apache.spark.graphx._
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.rdd.PairRDDFunctions
+import org.apache.spark.rdd.{RDD, PairRDDFunctions}
+import scala.collection.mutable
 import scala.util.Random
 
 object GenerateGraph {
 
-
-  def generateTruthFinder(sc: SparkContext, path: String, k:Int, numPartitions:Int): Graph[OProp, Double] = {
-    println("GHEERERER4")
+  def parseStockFile(sc: SparkContext, path: String, numPartitions:Int) : RDD[(String, String, Double)] = {
     val fileData = sc.textFile(path)//.collect.foreach(x => println("****" + x))//"file:///home/mustang/roadNet-CA.txt").collect.foreach(println)
-    val parsedFileData = fileData.map(str => {
-        val split = str.split('\t')
-        val source = split(0)
-        val obj = split(1)
-        if(split.size < 3){
-          (source, obj, Double.MaxValue)
-        }else {
-          var fact = split(2)
-          if (!fact.isEmpty()) {
-            var splits = fact.split("%")
+    fileData.map(str => {
+      val split = str.split('\t')
+      val source = split(0)
+      val obj = split(1)
+      if(split.size < 3){
+        (source, obj, Double.MaxValue)
+      }else {
+        var fact = split(2)
+        if (!fact.isEmpty()) {
+          var splits = fact.split("%")
+          if (splits.size != 0) {
+            splits = splits(0).split("u")
             if (splits.size != 0) {
-              splits = splits(0).split("u")
-              if (splits.size != 0) {
-                fact = splits(0).stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")").stripSuffix("-")
-                if (fact.isEmpty()) {
-                  (source, obj, Double.MaxValue)
-                } else {
-                  (source, obj, fact.toDouble)
-                }
-              }else{
+              fact = splits(0).stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")").stripSuffix("-")
+              if (fact.isEmpty()) {
                 (source, obj, Double.MaxValue)
+              } else {
+                (source, obj, fact.toDouble)
               }
-            } else {
+            }else{
               (source, obj, Double.MaxValue)
             }
           } else {
             (source, obj, Double.MaxValue)
           }
+        } else {
+          (source, obj, Double.MaxValue)
         }
-
-      }).collect.foreach(println)
-    println("GHEERERER5")
-    //val groundTruthFileData = sc.textFile(path+"-nasdaq-com")
-    println("GHEERERER6")
-    //fileData.collect.foreach(println)
+      }
+    })
+  }
 
 
+  def stringHash(str: String) : VertexId = {
+    str.toLowerCase.replace(" ", "").hashCode.toLong
+  }
 
-    null
+
+  def generateTruthFinder(sc: SparkContext, path: String, numPartitions:Int): (Graph[OProp, Double], Graph[OProp, Double]) = {
+
+    val data = parseStockFile(sc, path, numPartitions)
+
+    // vertices is either (hash of source, default value), or (hash of object, fact)
+
+    val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
+      .union(data.map(x => (stringHash(x._2), OProp(VType.FACT, x._3)))))
+    val edges = data.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
+
+    val graph = Graph[OProp, Double](vertices, edges)
+
+    var groundTruth = parseStockFile(sc, path+"-nasdaq-com", numPartitions)
+    val verticesGT = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
+      .union(data.map(x => (stringHash(x._2), OProp(VType.FACT, x._3)))))
+    val edgesGT = data.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
+
+    val graphGT = Graph[OProp, Double](verticesGT, edgesGT)
+
+    graphGT.edges.collect.foreach(println)
+    println(graphGT.edges.count)
+    println(graph.edges.count)
+
+    (graph, graphGT)
   }
 
   def generate(sc: SparkContext, k:Int, numPartitions:Int): Graph[VertexProperties, EdgeProperties] = {
     var g = GenerateGraph.readAndPreProcess(sc, k, numPartitions)
     //var g = generateToyGraph(sc, k, numPartitions)
-    
+
     g.vertices.collect.foreach(v => {
       if (v == null) println(v)
       if (v._2 == null) println(v)
     })
-    
+
     val countArray = g.vertices.aggregate(Array.ofDim[Int](k+1, 4))((a, b) => {
-      var a1 = a.map(_.clone()) 
+      var a1 = a.map(_.clone())
       a1(b._2.label.id)(b._2.vType.id) += 1
       a1
     }, (a1, a2) => {
@@ -75,7 +97,7 @@ object GenerateGraph {
       a
     })
     //println(countArray.foreach(e => println(e.mkString(" "))))
-    
+
     val oldg = g
     g = g.mapVertices((_, v1) => {
       var v = v1.copy()
@@ -84,25 +106,25 @@ object GenerateGraph {
         v.rankDistribution.transform(x => 0.0)
         v.initialRankDistribution.transform(x => 0.0)
       }else{*/
-        for (i <- 0 to 3) {
-          if (v.label.id == i) {
-            v.rankDistribution(i) = 1.0/countArray(i)(v.vType.id) 
-            v.initialRankDistribution(i) = 1.0/countArray(i)(v.vType.id) 
-          }
-          else {
-            v.rankDistribution(i) = 0.0
-            v.initialRankDistribution(i) = 0.0
-          }
+      for (i <- 0 to 3) {
+        if (v.label.id == i) {
+          v.rankDistribution(i) = 1.0/countArray(i)(v.vType.id)
+          v.initialRankDistribution(i) = 1.0/countArray(i)(v.vType.id)
         }
-        //v.rankDistribution.transform(x => 1.0/countArray(v.label.id)(v.vType.id))
-        //v.initialRankDistribution.transform(x => 1.0/countArray(v.label.id)(v.vType.id))
+        else {
+          v.rankDistribution(i) = 0.0
+          v.initialRankDistribution(i) = 0.0
+        }
+      }
+      //v.rankDistribution.transform(x => 1.0/countArray(v.label.id)(v.vType.id))
+      //v.initialRankDistribution.transform(x => 1.0/countArray(v.label.id)(v.vType.id))
       //}
       v
     })
     //g.vertices.collect().foreach(e => println(e._2.initialRankDistribution.mkString(" ")))
     g
   }
-  
+
   def generateToyGraph(sc: SparkContext, k:Int, numPartitions:Int): Graph[VertexProperties, EdgeProperties] = {
     var vertices = Array(
       (1L, VertexProperties(k, VertexType.PAPER, "", ResearchArea.DATA_MINING)),
@@ -132,7 +154,7 @@ object GenerateGraph {
     var g: Graph[VertexProperties, EdgeProperties] = Graph(
       sc.parallelize(vertices),
       sc.parallelize(edges))
-     
+
     g
   }
 
@@ -218,7 +240,7 @@ object GenerateGraph {
       //.repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Papers")
-    
+
 
     //println(s"Num authors: ${authorKeys.count()}")
     //println(s"Num venues: ${venueKeys.count()}")
@@ -231,10 +253,10 @@ object GenerateGraph {
       .leftJoin(paperKeys)((v, i, u) => u.getOrElse(i))
       .filter(v => (v != null && v._2 != null))
     println("Joined objects and filtered invalid vertices")
-        
+
     val newEdges = graph.edges.map(e => Edge(e.srcId, e.dstId, new EdgeProperties()))
     var rankGraph = Graph(newVerts, newEdges)
-    
+
     rankGraph = rankGraph.mapTriplets(e => {
       val e1 = e.copy()
       if (e.srcAttr == null || e.dstAttr == null) {
@@ -244,9 +266,9 @@ object GenerateGraph {
         e1.attr
       }
     }, TripletFields.All)
-    
+
     val edgesTemp = rankGraph.edges.filter(e => (e.attr != null))
-    
+
     rankGraph = Graph(newVerts, edgesTemp)
     println("Number of partitions: " + rankGraph.edges.partitions.length)
 
