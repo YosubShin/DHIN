@@ -33,20 +33,20 @@ object TruthFinder extends Logging {
 
 
 
-    //var scoreGraph: Graph[OProp, Double] = graph
-    var g = graph
+    var scoreGraph: Graph[OProp, Double] = graph
+    //var g = graph
       // Associate the degree with each vertex
       .outerJoinVertices(graph.outDegrees) { (vid, vdata, deg) => (vdata, deg.getOrElse(0)) }
-    g.triplets.collect.foreach(x => println(x.srcAttr._1.vType + " " + x.srcAttr._1.value + " " + x.srcAttr._1.property.asInstanceOf[String] + " " + x.dstAttr._1.property.asInstanceOf[String] +  " " + x.srcAttr._2))
-    null
+    //g.triplets.collect.foreach(x => println(x.srcAttr._1.vType + " " + x.srcAttr._1.value + " " + x.srcAttr._1.property.asInstanceOf[String] + " " + x.dstAttr._1.property.asInstanceOf[String] +  " " + x.srcAttr._2))
+
       // Set the weight on the edges based on the degree
-      /*
+
       .mapTriplets(e => {
-      if(e.srcAttr._1.vType == VType.WEBSITE){
-        1.0 / e.dstAttr._2 // from source to fact
-      } else {
-        0.0 // from fact to object
-      }
+      //if(e.srcAttr._1.vType == VType.WEBSITE){
+        1.0 / e.srcAttr._2 // from source to fact
+      //} else {
+      //  0.0 // from fact to object
+      //}
     }, TripletFields.Src ).mapVertices((id, attr) => {
       /*if(attr._1.vType == VType.WEBSITE){
         OProp(attr._1.vType, 0.9, attr._1.property)
@@ -62,6 +62,7 @@ object TruthFinder extends Logging {
     var activeWebsites: VertexRDD[Double] = graph.vertices.filter(v => v._2.vType == VType.WEBSITE).mapValues(x => 0.0)
     var activeFacts: VertexRDD[Double] = null
     // !!!!!! START TIMER HERE !!!!!!
+    // CHECKPOINT BEFORE STARTING BECUZ LINEAGE HUGE
     while(iteration < numIter) {
       scoreGraph.cache()
       // send messages from sources to facts and vice versa
@@ -119,7 +120,7 @@ object TruthFinder extends Logging {
       iteration += 1
     }
     scoreGraph
-    */
+
   }
 
   def runMultiFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int, gamma: Double, rho: Double) : Graph[OProp, Double] = {
