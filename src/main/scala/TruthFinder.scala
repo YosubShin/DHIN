@@ -124,6 +124,8 @@ object TruthFinder extends Logging {
       }
       scoreGraph.edges.foreach(x => {})
       println("*****ASDASD3.5******")
+      scoreGraph.vertices.collect.foreach(e => if(e._2.vType == VType.OBJECT) println(e._2.msg))
+      
       // send aggregate facts from objects back to facts
       val activeFactsAgg = scoreGraph.mapReduceTriplets[Array[OProp]](
         ctx => {
@@ -133,6 +135,7 @@ object TruthFinder extends Logging {
         Some((activeObjects, EdgeDirection.In))
       ).cache()
       activeFactsAgg.foreachPartition(x => {})
+      
       println("*****ASDASD4******")
       // Aggregate facts at each fact and calculate the confidence of each fact.
       scoreGraph = scoreGraph.joinVertices(activeFactsAgg){
