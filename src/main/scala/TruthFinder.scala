@@ -61,6 +61,7 @@ object TruthFinder extends Logging {
     var prevScoreGraph: Graph[OProp, Double] = null
     var activeWebsites: VertexRDD[Double] = graph.vertices.filter(v => v._2.vType == VType.WEBSITE).mapValues(x => 0.0)
     var activeFacts: VertexRDD[Double] = null
+    scoreGraph.edges.foreach(x => {})
     // !!!!!! START TIMER HERE !!!!!!
     // CHECKPOINT BEFORE STARTING BECUZ LINEAGE HUGE
     while(iteration < numIter) {
