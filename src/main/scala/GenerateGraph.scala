@@ -22,7 +22,7 @@ object GenerateGraph {
           var fact = split(2)
           if (!fact.isEmpty()) {
             val splits = fact.split("%")
-            if (splits.size == 0) {
+            if (splits.size != 0) {
               fact = fact.stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
               if (fact.isEmpty()) {
                 (source, obj, Double.MaxValue)
