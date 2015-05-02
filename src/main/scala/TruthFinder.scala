@@ -89,11 +89,12 @@ object TruthFinder extends Logging {
         (v1, v2) => v1 + v2,
         Some((activeWebsites, EdgeDirection.Out))
       ).cache()
+      activeFacts.collect.foreach(println)
       prevScoreGraph = scoreGraph
       // Join here -- need to update facts with new message sum
       // using Equations (5) and (7)
       scoreGraph = scoreGraph.joinVertices(activeFacts){
-        (id, attr, msgSum) => OProp(attr.vType, 1.0 - math.exp(-1.0*msgSum))
+        (id, attr, msgSum) => OProp(attr.vType, 1.0 - math.exp(-1.0*msgSum), attr.property)
       }
       prevScoreGraph.vertices.unpersist(blocking = false)
       prevScoreGraph.edges.unpersist(blocking = false)
