@@ -16,8 +16,13 @@ object GenerateGraph {
         val split = str.split('\t')
         val source = split(0)
         val obj = split(1)
-        val fact = split(2).stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")").toDouble
-        (source, obj, fact)
+        val fact = split(2).stripPrefix("(").stripSuffix("%").stripSuffix(")").stripSuffix("%").stripSuffix(")")
+          if(fact.isEmpty()){
+            (source, obj, Double.MaxValue)
+          }else {
+            (source, obj, fact.toDouble)
+          }
+
       }).collect.foreach(println)
     println("GHEERERER5")
     //val groundTruthFileData = sc.textFile(path+"-nasdaq-com")
