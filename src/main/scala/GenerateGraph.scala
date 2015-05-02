@@ -87,8 +87,8 @@ object GenerateGraph {
     val data = parseStockFile(sc, path, numPartitions)
 
     // vertices is either (hash of source, default value), or (hash of object, fact)
-    val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
-      .union(data.map(x => (stringHash(x._2), OProp(VType.FACT, x._3)))))
+    val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9, x._1)))
+      .union(data.map(x => (stringHash(x._2), OProp(VType.FACT, x._3, x._2)))))
       .repartition(numPartitions)
     val edges = data.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
       .repartition(numPartitions)
