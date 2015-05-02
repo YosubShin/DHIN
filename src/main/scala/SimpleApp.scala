@@ -44,8 +44,9 @@ object SimpleApp {
     val numPartitions = 32
     val numTop = 100
     val (graph, gt) = GenerateGraph.generateTruthFinder(sc, "/home/mustang/clean_stocks/data", 16)
-    val g = TruthFinder.runSingleFact(sc, graph, 1)
-    g.edges.foreach(x => {})
+    graph.vertices.collect.foreach(println)
+    //val g = TruthFinder.runSingleFact(sc, graph, 1)
+    //g.edges.foreach(x => {})
     //g.vertices.collect.foreach(println)
     //stock-2011-07-01
     /*
