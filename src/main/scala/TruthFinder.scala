@@ -123,6 +123,7 @@ object TruthFinder extends Logging {
         (id, attr, aggFacts) => OProp(attr.vType, attr.value, attr.property, aggFacts)
       }
       scoreGraph.edges.foreach(x => {})
+      println("*****ASDASD3.5******")
       // send aggregate facts from objects back to facts
       val activeFactsAgg = scoreGraph.mapReduceTriplets[Array[OProp]](
         ctx => {
