@@ -26,6 +26,10 @@ object TruthFinder extends Logging {
       ).size/o1.property.asInstanceOf[Array[String]].size - 0.5
   }
 
+  def impStocks(o1: OProp, o2: OProp): Double = {
+    math.abs(o1.value - o2.value) / o1.value
+  }
+
   // some sources, many facts, some objects
   def runSingleFact(sc: SparkContext, graph: Graph[OProp, Double], numIter: Int, gamma: Double, rho: Double) : Graph[OProp, Double] = {
     // edge between Facts and Websites, and Facts and Objects
@@ -34,16 +38,16 @@ object TruthFinder extends Logging {
 
 
     var scoreGraph: Graph[OProp, Double] = graph
-    //var g = graph
+      //var g = graph
       // Associate the degree with each vertex
       .outerJoinVertices(graph.outDegrees) { (vid, vdata, deg) => (vdata, deg.getOrElse(0)) }
-    //g.triplets.collect.foreach(x => println(x.srcAttr._1.vType + " " + x.srcAttr._1.value + " " + x.srcAttr._1.property.asInstanceOf[String] + " " + x.dstAttr._1.property.asInstanceOf[String] +  " " + x.srcAttr._2))
+      //g.triplets.collect.foreach(x => println(x.srcAttr._1.vType + " " + x.srcAttr._1.value + " " + x.srcAttr._1.property.asInstanceOf[String] + " " + x.dstAttr._1.property.asInstanceOf[String] +  " " + x.srcAttr._2))
 
       // Set the weight on the edges based on the degree
 
       .mapTriplets(e => {
       //if(e.srcAttr._1.vType == VType.WEBSITE){
-        1.0 / e.srcAttr._2 // from source to fact
+      1.0 / e.srcAttr._2 // from source to fact
       //} else {
       //  0.0 // from fact to object
       //}
@@ -61,6 +65,7 @@ object TruthFinder extends Logging {
     var prevScoreGraph: Graph[OProp, Double] = null
     var activeWebsites: VertexRDD[Double] = graph.vertices.filter(v => v._2.vType == VType.WEBSITE).mapValues(x => 0.0)
     var activeFacts: VertexRDD[Double] = null
+    var activeObjects: VertexRDD[Array[OProp]] = null
     scoreGraph.edges.foreach(x => {})
     // !!!!!! START TIMER HERE !!!!!!
     // CHECKPOINT BEFORE STARTING BECUZ LINEAGE HUGE
@@ -90,19 +95,53 @@ object TruthFinder extends Logging {
         Some((activeWebsites, EdgeDirection.Out))
       ).cache()
       //activeFacts.collect.foreach(println)
-
       println("*****ASDASD1******")
-
       prevScoreGraph = scoreGraph
       // Join here -- need to update facts with new message sum
       // using Equations (5) and (7)
       scoreGraph = scoreGraph.joinVertices(activeFacts){
         (id, attr, msgSum) => OProp(attr.vType, 1.0 - math.exp(-1.0*msgSum), attr.property)
       }
-      scoreGraph.vertices.collect.foreach(println)
       prevScoreGraph.vertices.unpersist(blocking = false)
       prevScoreGraph.edges.unpersist(blocking = false)
-      // propagate from facts to sources
+      println("*****ASDASD2******")
+      // Send facts to objects
+      activeObjects = scoreGraph.mapReduceTriplets[Array[OProp]](
+        ctx => {
+          Iterator((ctx.srcId, Array(ctx.srcAttr)))
+        },
+        (v1, v2) => v1 ++ v2,
+        Some((activeFacts, EdgeDirection.Out))
+      ).cache()
+      prevScoreGraph = scoreGraph
+      // join here -- need to update websites with new trustworthiness
+      println("*****ASDASD3******")
+      scoreGraph = scoreGraph.joinVertices(activeObjects){
+        (id, attr, aggFacts) => OProp(attr.vType, attr.value, attr.property, aggFacts)
+      }
+      // send aggregate facts from objects back to facts
+      val activeFactsAgg = scoreGraph.mapReduceTriplets[Array[OProp]](
+        ctx => {
+          Iterator((ctx.srcId, ctx.srcAttr.msg.asInstanceOf[Array[OProp]]))
+        },
+        (v1, v2) => v1 ++ v2,
+        Some((activeObjects, EdgeDirection.In))
+      ).cache()
+      println("*****ASDASD4******")
+      // Aggregate facts at each fact and calculate the confidence of each fact.
+      scoreGraph = scoreGraph.joinVertices(activeFactsAgg){
+        (id, attr, msgSum) => {
+          val sum: Double = msgSum.foldLeft[Double](0.0)((d, prop) => {
+            d + prop.value*impStocks(attr, prop)
+          })
+          val sigmaStar = attr.value + rho*(sum) // Equation 6
+          val s = 1.0 / (1.0 - math.exp(-1.0*gamma * sigmaStar)) // Equation 8
+          OProp(attr.vType, s, attr.property) // facts
+        }
+      }
+
+      println("*****ASDASD5******")
+      // send fact confidence back to websites
       activeWebsites = scoreGraph.mapReduceTriplets[Double](
         ctx => {
           if(ctx.srcAttr.vType == VType.FACT){
@@ -116,6 +155,7 @@ object TruthFinder extends Logging {
         Some((activeFacts, EdgeDirection.In))
       ).cache()
       prevScoreGraph = scoreGraph
+      println("*****ASDASD5******")
       // join here -- need to update websites with new trustworthiness
       scoreGraph = scoreGraph.joinVertices(activeWebsites){
         (id, attr, msgSum) => OProp(attr.vType, msgSum, attr.property)

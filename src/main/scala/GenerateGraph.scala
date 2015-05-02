@@ -92,7 +92,7 @@ object GenerateGraph {
 
     val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9, x._1)))
       .union(data.map(x => (stringHash(x._2 + x._3.toString()), OProp(VType.FACT, x._3, x._2)))))
-      .union(data.map(x => (stringHash(x._2), OProp(VType.OBJECT, 0.0))))
+      .union(data.map(x => (stringHash(x._2), OProp(VType.OBJECT, 0.0, x._2))))
       .repartition(numPartitions)
 
     /*val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9, x._1)))
