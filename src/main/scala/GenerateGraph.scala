@@ -103,7 +103,7 @@ object GenerateGraph {
     graphGT.edges.collect.foreach(println)
     println(graphGT.edges.count)
     */
-    groundTruth.foreach(println)
+    groundTruth.collect.foreach(println)
     println(groundTruth.count)
     println(graph.edges.count)
 
