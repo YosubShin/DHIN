@@ -37,7 +37,7 @@ object TruthFinder extends Logging {
     var g = graph
       // Associate the degree with each vertex
       .outerJoinVertices(graph.outDegrees) { (vid, vdata, deg) => (vdata, deg.getOrElse(0)) }
-    g.triplets.collect.foreach(x => println(x.dstAttr + " " + println(x.dstAttr._2)))
+    g.triplets.collect.foreach(x => println(x.dstAttr + " " + x.dstAttr._2))
     null
       // Set the weight on the edges based on the degree
       /*
