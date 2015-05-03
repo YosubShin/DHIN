@@ -43,13 +43,13 @@ object SimpleApp {
     val k: Int = 4
     val numPartitions = 32
     val numTop = 100
-    val (graph, gt) = GenerateGraph.generateTruthFinder(sc, "/home/mustang/clean_stocks/data", 16)
+//    val (graph, gt) = GenerateGraph.generateTruthFinder(sc, "/home/mustang/clean_stocks/data", 16)
     //graph.vertices.collect.foreach(println)
-    val g = TruthFinder.runSingleFact(sc, graph, 1)
-    g.edges.foreach(x => {})
-    g.vertices.collect.foreach(println)
+//    val g = TruthFinder.runSingleFact(sc, graph, 1)
+//    g.edges.foreach(x => {})
+//    g.vertices.collect.foreach(println)
     //stock-2011-07-01
-    /*
+
     val g = GenerateGraph.generate(sc, k, numPartitions).partitionBy(PartitionStrategy.EdgePartition2D).cache()
 
     val lambda = Array.ofDim[Double](4, 4).transform(x => x.transform(y => 0.2).array).array
@@ -81,7 +81,7 @@ object SimpleApp {
       topVenues.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
       println(s"************************************")
     }
-    */
+    
     /*
     val aggregateTypes:VertexRDD[Array[Double]] = g.aggregateMessages[Array[Double]](
       ctx => {
