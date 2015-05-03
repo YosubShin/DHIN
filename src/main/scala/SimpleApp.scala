@@ -24,20 +24,21 @@ object SimpleApp {
     println("Main")
     Logger.getLogger("org").setLevel(Level.WARN)
     Logger.getLogger("akka").setLevel(Level.WARN)
-    val conf = new SparkConf().setMaster("spark://mustang12:7077").setAppName("dhin")
-    /*
+//    val conf = new SparkConf().setMaster("spark://mustang12:7077").setAppName("dhin")
+
     //val sc = new SparkContext(conf.setAppName("dhin"))
     val sc = new SparkContext("local[8]", "DHIN", "/usr/local/Cellar/apache-spark/1.2.1/libexec",
       List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
-      */
-    val sc = new SparkContext(conf)
+
+//    val sc = new SparkContext(conf)
 
 
     /*val sc = new SparkContext("local[1]", "DHIN", "$SPARK_HOME/libexec",
       List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
     */
     /*"spark://mustang12:7077"*/
-    sc.setCheckpointDir("/home/mustang/tmp")
+//    sc.setCheckpointDir("/home/mustang/tmp")
+    sc.setCheckpointDir("/tmp")
 //    .partitionBy(PartitionStrategy.EdgePartition2D)
 
     val k: Int = 4
@@ -80,6 +81,9 @@ object SimpleApp {
       var topVenues = ranks.vertices.filter(e => (e._2.vType == VertexType.VENUE)).top(10)(ordering)
       topVenues.foreach(x => println(s"${x._1} ${x._2.attribute} ${x._2.vType} ${x._2.rankDistribution.mkString(" ")}"))
       println(s"************************************")
+
+      val initialRelativeSizesOfClassesForTypes = Array.ofDim[Double](4, 4).transform(x => x.transform(y => 1.0 / k).array).array
+      val finalRelativeSizesOfClassesForTypes = EM.run(sc, ranks, 5, initialRelativeSizesOfClassesForTypes)
     }
 
     /*

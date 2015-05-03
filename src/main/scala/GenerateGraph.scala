@@ -127,8 +127,8 @@ object GenerateGraph {
   }
 
   def generate(sc: SparkContext, k:Int, numPartitions:Int): Graph[VertexProperties, EdgeProperties] = {
-    var g = GenerateGraph.readAndPreProcess(sc, k, numPartitions)
-    //var g = generateToyGraph(sc, k, numPartitions)
+//    var g = GenerateGraph.readAndPreProcess(sc, k, numPartitions)
+    var g = generateToyGraph(sc, k, numPartitions)
 
     g.vertices.collect.foreach(v => {
       if (v == null) println(v)
