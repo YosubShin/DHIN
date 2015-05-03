@@ -86,7 +86,7 @@ object RankClass {
       val vId = v._1
       val arr = v._2._1
       val vAttr = v._2._2
-      println(s"id:${vId}, type:${vAttr.vType}, lbl:${vAttr.label}, attr:${vAttr.attribute}\tprob:${arr.mkString(" ")}")
+      println(s"id:${vId}, type:${vAttr.vType}, lbl:${vAttr.label}, attr:${vAttr.attribute}\tprob:${arr(vAttr.vType.id).mkString(" ")}")
     })
 
     sc.stop()
