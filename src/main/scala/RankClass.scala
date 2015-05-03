@@ -78,7 +78,14 @@ object RankClass {
     val emResult = EM.run(sc, ranks, numEmIterations, numTypes, numClasses)
     val probInClassesForObjs = emResult._1
 
-    probInClassesForObjs.innerJoin(g.vertices)((vId, arr, vAttr) => {
+    val joined = probInClassesForObjs.innerJoin(g.vertices)((vId, arr, vAttr) => {
+      (arr, vAttr)
+    })
+
+    joined.collect.foreach(v => {
+      val vId = v._1
+      val arr = v._2._1
+      val vAttr = v._2._2
       println(s"id:${vId}, type:${vAttr.vType}, lbl:${vAttr.label}, attr:${vAttr.attribute}\tprob:${arr.mkString(" ")}")
     })
 
