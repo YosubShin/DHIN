@@ -14,32 +14,26 @@ import org.apache.spark.rdd.RDD
 
 import org.apache.spark.graphx.lib._
 
-/*
-~/PredictionIO/vendors/spark-1.2.0/bin/spark-submit --class "SimpleApp" --master local[8] --driver-memory 6G --executor-memory 6G target/scala-2.10/DHIN_2.10-0.1-SNAPSHOT.jar
- */
-
 object RankClass {
+  val logger = Logger.getLogger(RankClass.getClass)
 
   def main(args: Array[String]) {
     println("Main")
     Logger.getLogger("org").setLevel(Level.WARN)
     Logger.getLogger("akka").setLevel(Level.WARN)
-//    val conf = new SparkConf().setMaster("spark://mustang12:7077").setAppName("dhin")
+    val profile: String = args(0)
+    logger.warn(s"profile: ${profile}")
 
-    //val sc = new SparkContext(conf.setAppName("dhin"))
-    val sc = new SparkContext("local[8]", "DHIN", "/usr/local/Cellar/apache-spark/1.2.1/libexec",
-      List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
-
-//    val sc = new SparkContext(conf)
-
-
-    /*val sc = new SparkContext("local[1]", "DHIN", "$SPARK_HOME/libexec",
-      List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
-    */
-    /*"spark://mustang12:7077"*/
-//    sc.setCheckpointDir("/home/mustang/tmp")
-    sc.setCheckpointDir("/tmp")
-//    .partitionBy(PartitionStrategy.EdgePartition2D)
+    var sc: SparkContext = null
+    if (profile.equals(s"mustang")) {
+      val conf = new SparkConf()
+      sc = new SparkContext(conf)
+      sc.setCheckpointDir("/home/mustang/tmp")
+    } else {
+      sc = new SparkContext("local[8]", "DHIN", "/usr/local/Cellar/apache-spark/1.2.1/libexec",
+        List("target/scala-2.10/dhin_2.10-0.1-SNAPSHOT.jar"))
+      sc.setCheckpointDir("/tmp")
+    }
 
     val numClasses = ResearchArea.values.size - 1
     val numTypes = VertexType.values.size
@@ -81,7 +75,12 @@ object RankClass {
       println(s"************************************")
     }
 
-    val finalRelativeSizesOfClassesForTypes = EM.run(sc, ranks, numEmIterations, numTypes, numClasses)
+    val emResult = EM.run(sc, ranks, numEmIterations, numTypes, numClasses)
+    val probInClassesForObjs = emResult._1
+
+    probInClassesForObjs.innerJoin(g.vertices)((vId, arr, vAttr) => {
+      println(s"id:${vId}, type:${vAttr.vType}, lbl:${vAttr.label}, attr:${vAttr.attribute}\tprob:${arr.mkString(" ")}")
+    })
 
     sc.stop()
   }
