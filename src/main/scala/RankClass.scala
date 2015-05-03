@@ -41,7 +41,7 @@ object RankClass {
     sc.setCheckpointDir("/tmp")
 //    .partitionBy(PartitionStrategy.EdgePartition2D)
 
-    val numClasses = ResearchArea.values.size
+    val numClasses = ResearchArea.values.size - 1
     val numTypes = VertexType.values.size
     val numBuildNetworkIterations = 5
     val numEmIterations = 5
@@ -55,7 +55,7 @@ object RankClass {
 
     val now = System.nanoTime
     println("Starting AuthorityRank")
-    val ranks = IterativeNetworkConstruction.run(sc, g, numBuildNetworkIterations, lambda, alpha)
+    val ranks = IterativeNetworkConstruction.run(sc, g, numBuildNetworkIterations, lambda, alpha, numTypes, numClasses)
     ranks.edges.foreachPartition(x => {})
     val elapsed = System.nanoTime - now
     println("AuthorityRank completed in : " + elapsed / 1000000000.0 + " seconds")

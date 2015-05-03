@@ -11,8 +11,13 @@ import org.apache.spark.rdd.RDD
 
 object IterativeNetworkConstruction extends Logging {
 
-  def run(sc: SparkContext, graph: Graph[VertexProperties, EdgeProperties], numIterations: Int, lambda: Array[Array[Double]], alpha: Array[Double])
+  def run(sc: SparkContext, graph: Graph[VertexProperties, EdgeProperties], numIterations: Int, lambda: Array[Array[Double]], alpha: Array[Double], numTypes: Int, numClasses: Int)
   : Graph[VertexProperties, EdgeProperties] = {
+    val typeIndices: Array[VertexRDD[VertexProperties]] = Array.ofDim(numTypes)
+    for (i <- 0 until typeIndices.length) {
+      typeIndices(i) = graph.vertices.filter(v => v._2.vType.id == i)
+    }
+
     var rankGraph = graph
     var iteration = 0
     val broadcast_lambda = sc.broadcast(lambda)
@@ -26,7 +31,7 @@ object IterativeNetworkConstruction extends Logging {
       rankGraph = authorityRank(rankGraph, broadcast_lambda, broadcast_alpha)
 
       // Adjusting the Network by changing link weights
-      // TODO TBD
+      rankGraph = adjustNetwork(sc, rankGraph, typeIndices, iteration, numTypes, numClasses)
 
       iteration += 1
     }
@@ -137,5 +142,46 @@ object IterativeNetworkConstruction extends Logging {
     //println("End 4")
     println(s"Iteration time: ${elapsed / 1000000000.0}" )
     newRankGraph
+  }
+
+  def adjustNetwork(sc: SparkContext, graph: Graph[VertexProperties, EdgeProperties], typeIndices:Array[VertexRDD[VertexProperties]], iteration: PartitionID, numTypes: Int, numClasses: Int): Graph[VertexProperties, EdgeProperties] = {
+    // Calculate max P(x_{ip} | \Chi_{i}, k)
+    // Row: Type, Column: Class
+    val maxRankForClassesForTypes = Array.ofDim[Double](numTypes, numClasses)
+    for (i <- 0 until numTypes) {
+      val maxRankForClasses = graph.vertices.innerJoin(typeIndices(i))((vId, vAttr, _) => {
+        vAttr
+      }).aggregate(Array.ofDim[Double](numTypes))((arr, v) => {
+        arr.zip(v._2.rankDistribution).map(x => Math.max(x._1, x._2))
+      }, (arr1, arr2) => {
+        arr1.zip(arr2).map(x => Math.max(x._1, x._2))
+      })
+      maxRankForClassesForTypes(i) = maxRankForClasses
+    }
+    val broadcastMaxRankForClassesForTypes = sc.broadcast(maxRankForClassesForTypes)
+
+    val r = 1.0 / Math.pow(2, iteration)
+    graph.mapTriplets(triplet => {
+      // Calculate R_{ij,pq}(k) by using P(x_{ip} | \Chi_{i}, k)
+      val edgeProperties = triplet.attr
+      val old_r_ijpq = edgeProperties.R
+      val src = triplet.srcAttr
+      val dst = triplet.dstAttr
+
+      val maxArr = broadcastMaxRankForClassesForTypes.value
+
+      val resultEdgeProperties = EdgeProperties()
+      for (k <- 0 until numClasses) {
+        var geometricMean = 0.0
+        if (maxArr(src.vType.id)(k) != 0 && maxArr(dst.vType.id)(k) != 0) {
+          geometricMean = Math.sqrt(src.rankDistribution(k) / maxArr(src.vType.id)(k) * dst.rankDistribution(k) / maxArr(dst.vType.id)(k))
+        }
+        resultEdgeProperties.R(k) = old_r_ijpq(k) * (r + geometricMean)
+        resultEdgeProperties.S(k) = edgeProperties.S(k)
+      }
+
+      resultEdgeProperties
+    })
+
   }
 }

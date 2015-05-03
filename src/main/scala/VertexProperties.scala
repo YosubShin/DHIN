@@ -22,8 +22,8 @@ case class VertexProperties(k: Int, vType: VertexType.VertexType, attribute: Str
 
   //2-D array: rows object type, column objects belonging to object type
   //1-D array: columns all neighbor
-  var RSum: Array[Double] = Array.ofDim[Double](4).transform(x => 0.0).array
-  var sumRij: Array[Array[Double]] = null
+//  var RSum: Array[Double] = Array.ofDim[Double](4).transform(x => 0.0).array
+//  var sumRij: Array[Array[Double]] = null
 
   var subnetworkId: Int = -1
 
@@ -34,7 +34,7 @@ case class VertexProperties(k: Int, vType: VertexType.VertexType, attribute: Str
     v.label = label
     v.rankDistribution = rankDistribution.clone()
     v.initialRankDistribution = initialRankDistribution.clone()
-    v.RSum = RSum.clone()
+//    v.RSum = RSum.clone()
     v.subnetworkId = subnetworkId
     v
   }
