@@ -4,13 +4,12 @@ import org.apache.spark.{Logging, SparkContext}
 
 object EM extends Logging {
 
-  def run(sc: SparkContext, ranks: Graph[VertexProperties, EdgeProperties], numIter: Int, initialRelativeSizesOfClassesForTypes: Array[Array[Double]])
+  def run(sc: SparkContext, ranks: Graph[VertexProperties, EdgeProperties], numIter: Int, numTypes: Int, numClasses: Int)
   : Array[Array[Double]] = {
     var iteration = 0
-    // Row: Type \Chi_{i}, Column: Class k 
+    // i-th Row: Type \Chi_{i}, j-th Column: Class j
+    val initialRelativeSizesOfClassesForTypes = Array.ofDim[Double](numTypes, numClasses).transform(x => x.transform(y => 1.0 / numClasses).array).array
     val relativeSizesOfClassesForTypes = initialRelativeSizesOfClassesForTypes
-    val numTypes = initialRelativeSizesOfClassesForTypes.length
-    val numClasses = initialRelativeSizesOfClassesForTypes(0).length
 
     println(s"Initially, the relative size of classes in types:")
     println(relativeSizesOfClassesForTypes.deep.mkString("\n"))

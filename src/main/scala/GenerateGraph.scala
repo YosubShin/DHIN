@@ -81,51 +81,6 @@ object GenerateGraph {
     str.toLowerCase.replace(" ", "").hashCode.toLong
   }
 
-
-  def generateTruthFinder(sc: SparkContext, path: String, numPartitions:Int): (Graph[OProp, Double], VertexRDD[Double]) = {
-
-    val data = parseStockFile(sc, path, numPartitions)
-
-    // vertices is either (hash of source, default value), or (hash of object, fact)
-
-    //data.collect.foreach(x => println(x._2 + x._3.toString()))
-
-    val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9, x._1)))
-      .union(data.map(x => (stringHash(x._2 + x._3.toString()), OProp(VType.FACT, x._3, x._2)))))
-      .union(data.map(x => (stringHash(x._2), OProp(VType.OBJECT, 0.0, x._2))))
-      .repartition(numPartitions)
-
-    /*val vertices = VertexRDD(data.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9, x._1)))
-      .union(data.map(x => (stringHash(x._2), OProp(VType.FACT, x._3, x._2)))))
-      .repartition(numPartitions)
-    */
-    val edges = data.map(x => Edge(stringHash(x._1), stringHash(x._2 + x._3.toString()), 0.0))
-      .union(data.map(x => Edge(stringHash(x._2 + x._3.toString()), stringHash(x._2), 0.0)))
-      .repartition(numPartitions)
-
-    val graph = Graph[OProp, Double](vertices, edges)
-
-
-    val groundTruth = VertexRDD(parseStockFileGT(sc, path+"-nasdaq-com", numPartitions)
-      .map(x => (stringHash(x._1 + x._2.toString()), x._2)).repartition(numPartitions))
-
-    /*val verticesGT = VertexRDD(groundTruth.map(x => (stringHash(x._1), OProp(VType.WEBSITE, 0.9)))
-      .union(groundTruth.map(x => (stringHash(x._2), OProp(VType.FACT, x._3)))))
-    val edgesGT = groundTruth.map(x => Edge(stringHash(x._1), stringHash(x._2), 0.0))
-
-    val graphGT = Graph[OProp, Double](verticesGT, edgesGT)
-
-    graphGT.edges.collect.foreach(println)
-    println(graphGT.edges.count)
-    */
-    /*
-    groundTruth.collect.foreach(println)
-    println(groundTruth.count)
-    println(graph.edges.count)
-    */
-    (graph, groundTruth)//, graphGT)
-  }
-
   def generate(sc: SparkContext, k:Int, numPartitions:Int): Graph[VertexProperties, EdgeProperties] = {
 //    var g = GenerateGraph.readAndPreProcess(sc, k, numPartitions)
     var g = generateToyGraph(sc, k, numPartitions)
@@ -187,7 +142,12 @@ object GenerateGraph {
       (7L, VertexProperties(k, VertexType.TERM, "", ResearchArea.DATA_MINING)),
       (8L, VertexProperties(k, VertexType.TERM, "", ResearchArea.AIML)),
       (9L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.NONE)),
-      (10L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.DATA_MINING))
+      (10L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.DATA_MINING)),
+      (11L, VertexProperties(k, VertexType.PAPER, "", ResearchArea.NONE)),
+      (12L, VertexProperties(k, VertexType.PAPER, "", ResearchArea.NONE)),
+      (13L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.NONE)),
+      (14L, VertexProperties(k, VertexType.AUTHOR, "", ResearchArea.NONE)),
+      (15L, VertexProperties(k, VertexType.PAPER, "", ResearchArea.NONE))
     )
 
     var edges = Array(
@@ -197,9 +157,15 @@ object GenerateGraph {
       Edge(2L, 4L, EdgeProperties()),
       Edge(2L, 6L, EdgeProperties()),
       Edge(2L, 8L, EdgeProperties()),
-      Edge(1L, 2L, EdgeProperties()),
+//      Edge(1L, 2L, EdgeProperties()),
       Edge(1L, 9L, EdgeProperties()),
-      Edge(1L, 10L, EdgeProperties())
+      Edge(1L, 10L, EdgeProperties()),
+      Edge(9L, 11L, EdgeProperties()),
+      Edge(11L, 14L, EdgeProperties()),
+      Edge(14L, 15L, EdgeProperties()),
+      Edge(13L, 15L, EdgeProperties()),
+      Edge(12L, 13L, EdgeProperties()),
+      Edge(6L, 12L, EdgeProperties())
     )
 
     var g: Graph[VertexProperties, EdgeProperties] = Graph(
