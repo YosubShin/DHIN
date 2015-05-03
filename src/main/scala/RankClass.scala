@@ -86,7 +86,20 @@ object RankClass {
       val vId = v._1
       val arr = v._2._1
       val vAttr = v._2._2
-      println(s"id:${vId}, type:${vAttr.vType}, lbl:${vAttr.label}, attr:${vAttr.attribute}\tprob:${arr(vAttr.vType.id).mkString(" ")}")
+
+      var maxIdx = ResearchArea.NONE.id
+      var maxValue = -1.0
+      for(i <- 0 until 4){
+        if(arr(vAttr.vType.id)(i) > maxValue) {
+          maxValue = arr(vAttr.vType.id)(i)
+          maxIdx = i
+        }
+      }
+
+      println(s"id:${vId}, type:${vAttr.vType}, lbl:${vAttr.label}, attr:${vAttr.attribute}\tfound:${ResearchArea.apply(maxIdx)}\tprob:${arr(vAttr.vType.id).mkString("|")}")
+
+
+
     })
 
     sc.stop()
