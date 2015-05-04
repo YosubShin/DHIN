@@ -39,7 +39,7 @@ object RankClass {
     val numTypes = VertexType.values.size
     val numBuildNetworkIterations = 5
     val numEmIterations = 5
-    val numPartitions = 32
+    val numPartitions = 16
     val numTop = 100
 
     val g = GenerateGraph.generate(sc, numClasses, numPartitions).partitionBy(PartitionStrategy.EdgePartition2D).cache()
