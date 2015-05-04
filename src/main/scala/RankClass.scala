@@ -37,8 +37,8 @@ object RankClass {
 
     val numClasses = ResearchArea.values.size - 1
     val numTypes = VertexType.values.size
-    val numBuildNetworkIterations = 2
-    val numEmIterations = 2
+    val numBuildNetworkIterations = 5
+    val numEmIterations = 5
     val numPartitions = 16
     val numTop = 100
 
@@ -88,9 +88,9 @@ object RankClass {
         }
       }
 
-      println(s"Top overall elements for ${ResearchArea(i)}")
+      println(s"Top elements for ${ResearchArea(i)}")
       for (j <- 0 until numTypes) {
-        print(s"Top ${VertexType(j).toString}")
+        println(s"Top ${VertexType(j).toString}")
         val joined = probInClassesForObjs.innerJoin(g.vertices)((vId, arr, vAttr) => {
           (arr, vAttr)
         }).filter(v => {
