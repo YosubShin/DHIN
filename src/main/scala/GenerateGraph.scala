@@ -227,7 +227,7 @@ object GenerateGraph {
     })).leftJoin(confLabel)(
         (v, p, u) => new VertexProperties(k, VertexType.AUTHOR, p, u.getOrElse(ResearchArea.NONE))
       )
-      //.repartition(graph.vertices.partitions.length)
+      .repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Authors")
     val venueKeys = VertexRDD(sc.textFile(venueFile).map(a => {
@@ -236,7 +236,7 @@ object GenerateGraph {
     })).leftJoin(confLabel)(
         (v, p, u) => new VertexProperties(k, VertexType.VENUE, p, u.getOrElse(ResearchArea.NONE))
       )
-      //.repartition(graph.vertices.partitions.length)
+      .repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Venues")
     val termKeys = VertexRDD(sc.textFile(termFile).map(a => {
@@ -245,7 +245,7 @@ object GenerateGraph {
     })).leftJoin(confLabel)(
         (v, p, u) => new VertexProperties(k, VertexType.TERM, p, u.getOrElse(ResearchArea.NONE))
       )
-      //.repartition(graph.vertices.partitions.length)
+      .repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Terms")
     val paperKeys = VertexRDD(sc.textFile(paperFile).map(a => {
@@ -254,7 +254,7 @@ object GenerateGraph {
     })).leftJoin(confLabel)(
         (v, p, u) => new VertexProperties(k, VertexType.PAPER, p, u.getOrElse(ResearchArea.NONE))
       )
-      //.repartition(graph.vertices.partitions.length)
+      .repartition(graph.vertices.partitions.length)
       .cache()
     println("Merged Papers")
 
