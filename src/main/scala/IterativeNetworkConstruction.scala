@@ -27,13 +27,20 @@ object IterativeNetworkConstruction extends Logging {
     rankGraph.edges.foreachPartition(x => {})
 
     while (iteration < numIterations) {
+      val now = System.nanoTime
+
       // Rank objects in each class
+      println(s"Starting Authority Rank #$iteration")
       rankGraph = authorityRank(rankGraph, broadcast_lambda, broadcast_alpha)
 
+      println(s"Starting Adjust Network #$iteration")
       // Adjusting the Network by changing link weights
       rankGraph = adjustNetwork(sc, rankGraph, typeIndices, iteration, numTypes, numClasses)
 
       iteration += 1
+
+      val elapsed = System.nanoTime - now
+      println(s"Iteration time: ${elapsed / 1000000000.0}" )
     }
     rankGraph
   }
@@ -42,8 +49,7 @@ object IterativeNetworkConstruction extends Logging {
     val rankDenominator = broadcast_lambda.value.zip(broadcast_alpha.value).map(x => x._1.sum + x._2)
     rankGraph.cache()
     //val now1 = System.nanoTime
-    println("Start 1")
-    val now = System.nanoTime
+//    println("Start 1")
     // Vertices collecting R[i,j] values from neighbors via aggregateMessages
     val aggregateTypes: VertexRDD[Array[Array[Double]]] = rankGraph.aggregateMessages[Array[Array[Double]]](
       ctx => {
@@ -137,10 +143,6 @@ object IterativeNetworkConstruction extends Logging {
         v
       }).cache() //.repartition(rankGraph.edges.partitions.length).cache()
     newRankGraph.edges.foreachPartition(x => {})
-    val elapsed = System.nanoTime - now
-    //println(s"Num partitions for newGraph: ${rankGraph.edges.partitions.length} ${elapsed / 1000000000.0}")
-    //println("End 4")
-    println(s"Iteration time: ${elapsed / 1000000000.0}" )
     newRankGraph
   }
 

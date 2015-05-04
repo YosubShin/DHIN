@@ -47,12 +47,12 @@ object RankClass {
     val lambda = Array.ofDim[Double](numTypes, numTypes).transform(x => x.transform(y => 0.2).array).array
     val alpha = Array.ofDim[Double](numTypes).transform(x => 0.1).array
 
-    val now = System.nanoTime
-    println("Starting AuthorityRank")
+    var now = System.nanoTime
+    println("Starting AuthorityRank / Adjusting Network")
     val ranks = IterativeNetworkConstruction.run(sc, g, numBuildNetworkIterations, lambda, alpha, numTypes, numClasses)
     ranks.edges.foreachPartition(x => {})
-    val elapsed = System.nanoTime - now
-    println("AuthorityRank completed in : " + elapsed / 1000000000.0 + " seconds")
+    var elapsed = System.nanoTime - now
+    println("AuthorityRank / Adjusting Network completed in : " + elapsed / 1000000000.0 + " seconds")
 
     for(i <- 0 until numClasses){
       val ordering = new Ordering[(VertexId, VertexProperties)] {
@@ -75,8 +75,14 @@ object RankClass {
       println(s"************************************")
     }
 
+    now = System.nanoTime
+    println("Starting EM")
+
     val emResult = EM.run(sc, ranks, numEmIterations, numTypes, numClasses)
     val probInClassesForObjs = emResult._1
+
+    elapsed = System.nanoTime - now
+    println("EM completed in : " + elapsed / 1000000000.0 + " seconds")
 
 
     for(i <- 0 until numClasses){

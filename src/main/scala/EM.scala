@@ -30,8 +30,12 @@ object EM extends Logging {
 
     // EM Algorithm
     while (iteration < numIter) {
+      val now = System.nanoTime
+
       // E-step: Update probability of object of type \Chi_{i} belonging to class k using:
       // P(k | x_{ip}, \Chi_{i}) = P(x_{ip} | \Chi_{i}, k) * P(k | \Chi_{i})
+      println(s"Starting Expectation Step #$iteration")
+
       probInClassesForObjs = VertexRDD(ranks.vertices.map(v => {
         val vAttr = v._2
         val vTypeNum = vAttr.vType.id
@@ -44,13 +48,13 @@ object EM extends Logging {
 
         println(s"Obj #${v._1}, ProbInClasses:${probInClasses.mkString(" ")}")
 
-//        probInClasses2dArray
         (v._1, probInClasses2dArray)
       }))
 
       // M-step: Update relative sizes of classes for types
       // P(k | \Chi_{i}) = \sum_{p=1}^{n_{i}} P(k | x_{ip}, \Chi_{i}) / n_{i}
       // where n_{i}: number of objs in type i
+      println(s"Starting Maximization Step #$iteration")
 
       // M-1: Sum probabilities of each object belonging to class k for all classes
       val sumProbInClassesForObjs = probInClassesForObjs.aggregate(Array.ofDim[Double](numTypes, numClasses))((arr1, v) => {
@@ -82,6 +86,9 @@ object EM extends Logging {
       println(relativeSizesOfClassesForTypes.deep.mkString("\n"))
 
       iteration += 1
+
+      val elapsed = System.nanoTime - now
+      println(s"Iteration time: ${elapsed / 1000000000.0}" )
     }
     (probInClassesForObjs, relativeSizesOfClassesForTypes)
   }
