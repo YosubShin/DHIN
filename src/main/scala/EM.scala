@@ -41,6 +41,10 @@ object EM extends Logging {
         val vTypeNum = vAttr.vType.id
         val relativeSizeOfClasses = relativeSizesOfClassesForTypes(vTypeNum)
         var probInClasses =  vAttr.rankDistribution.zip(relativeSizeOfClasses).map(x => x._1 * x._2)
+        println(s"In iteration $iteration:")
+        println(s"rankDistribution=${vAttr.rankDistribution}")
+        println(s"relativeSizeOfClasses=$relativeSizeOfClasses")
+
         println(s"Before Obj #${v._1}, ProbInClasses:${probInClasses.mkString(" ")}")
 
         // sum of probInClasses should add up to 1
