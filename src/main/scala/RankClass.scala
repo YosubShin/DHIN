@@ -75,54 +75,54 @@ object RankClass {
       println(s"************************************")
     }
 
-//    now = System.nanoTime
-//    println("Starting EM")
-//
-//    val emResult = EM.run(sc, ranks, numEmIterations, numTypes, numClasses)
-//    val probInClassesForObjs = emResult._1
-//
-//    elapsed = System.nanoTime - now
-//    println("EM completed in : " + elapsed / 1000000000.0 + " seconds")
-//
-//
-//    for(i <- 0 until numClasses){
-//      val ordering = new Ordering[(VertexId, (Array[Array[Double]], VertexProperties))] {
-//        override def compare(a: (VertexId, (Array[Array[Double]], VertexProperties)), b: (VertexId, (Array[Array[Double]], VertexProperties))) = {
-//          val s: Double = a._2._2.rankDistribution(i)
-//          val t: Double = b._2._2.rankDistribution(i)
-//          s.compare(t)
-//        }
-//      }
-//
-//      println(s"Top elements for ${ResearchArea(i)}")
-//      for (j <- 0 until numTypes) {
-//        println(s"Top ${VertexType(j).toString}")
-//        val joined = probInClassesForObjs.innerJoin(g.vertices)((vId, arr, vAttr) => {
-//          (arr, vAttr)
-//        }).filter(v => {
-//          v._2._2.vType == VertexType.apply(j)
-//        }).top(10)(ordering)
-//
-//        joined.foreach(v => {
-//          val vId = v._1
-//          val arr = v._2._1
-//          val vAttr = v._2._2
-//
-//          var maxIdx = ResearchArea.NONE.id
-//          var maxValue = -1.0
-//          for(m <- 0 until numClasses){
-//            if(arr(vAttr.vType.id)(m) > maxValue) {
-//              maxValue = arr(vAttr.vType.id)(m)
-//              maxIdx = m
-//            }
-//          }
-//
-//          println(s"id:${vId}, type:${vAttr.vType}, lbl:${vAttr.label}, attr:${vAttr.attribute}\tfound:${ResearchArea.apply(maxIdx)}\tprob:${arr(vAttr.vType.id).mkString("|")}")
-//
-//        })
-//      }
-//      println(s"************************************")
-//    }
+    now = System.nanoTime
+    println("Starting EM")
+
+    val emResult = EM.run(sc, ranks, numEmIterations, numTypes, numClasses)
+    val probInClassesForObjs = emResult._1
+
+    elapsed = System.nanoTime - now
+    println("EM completed in : " + elapsed / 1000000000.0 + " seconds")
+
+
+    for(i <- 0 until numClasses){
+      val ordering = new Ordering[(VertexId, (Array[Array[Double]], VertexProperties))] {
+        override def compare(a: (VertexId, (Array[Array[Double]], VertexProperties)), b: (VertexId, (Array[Array[Double]], VertexProperties))) = {
+          val s: Double = a._2._2.rankDistribution(i)
+          val t: Double = b._2._2.rankDistribution(i)
+          s.compare(t)
+        }
+      }
+
+      println(s"Top elements for ${ResearchArea(i)}")
+      for (j <- 0 until numTypes) {
+        println(s"Top ${VertexType(j).toString}")
+        val joined = probInClassesForObjs.innerJoin(g.vertices)((vId, arr, vAttr) => {
+          (arr, vAttr)
+        }).filter(v => {
+          v._2._2.vType == VertexType.apply(j)
+        }).top(10)(ordering)
+
+        joined.foreach(v => {
+          val vId = v._1
+          val arr = v._2._1
+          val vAttr = v._2._2
+
+          var maxIdx = ResearchArea.NONE.id
+          var maxValue = -1.0
+          for(m <- 0 until numClasses){
+            if(arr(vAttr.vType.id)(m) > maxValue) {
+              maxValue = arr(vAttr.vType.id)(m)
+              maxIdx = m
+            }
+          }
+
+          println(s"id:${vId}, type:${vAttr.vType}, lbl:${vAttr.label}, attr:${vAttr.attribute}\tfound:${ResearchArea.apply(maxIdx)}\tprob:${arr(vAttr.vType.id).mkString("|")}")
+
+        })
+      }
+      println(s"************************************")
+    }
 
     sc.stop()
   }
