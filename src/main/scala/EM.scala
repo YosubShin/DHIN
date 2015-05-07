@@ -39,7 +39,7 @@ object EM extends Logging {
       probInClassesForObjs = VertexRDD(ranks.vertices.map(v => {
         val vAttr = v._2
         val vTypeNum = vAttr.vType.id
-        val relativeSizeOfClasses = initialRelativeSizesOfClassesForTypes(vTypeNum)
+        val relativeSizeOfClasses = relativeSizesOfClassesForTypes(vTypeNum)
         val probInClasses =  vAttr.rankDistribution.zip(relativeSizeOfClasses).map(x => x._1 * x._2)
 
         // For convenient reduce, it returns array of size of number of types, where each

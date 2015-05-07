@@ -42,7 +42,7 @@ object RankClass {
     val numPartitions = 16
     val numTop = 100
 
-    val g = GenerateGraph.generate(sc, numClasses, numPartitions).partitionBy(PartitionStrategy.RandomVertexCut).cache()
+    val g = GenerateGraph.generate(sc, numClasses, numPartitions).partitionBy(PartitionStrategy.EdgePartition1D).cache()
 
     val lambda = Array.ofDim[Double](numTypes, numTypes).transform(x => x.transform(y => 0.2).array).array
     val alpha = Array.ofDim[Double](numTypes).transform(x => 0.1).array
