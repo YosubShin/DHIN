@@ -40,7 +40,11 @@ object EM extends Logging {
         val vAttr = v._2
         val vTypeNum = vAttr.vType.id
         val relativeSizeOfClasses = relativeSizesOfClassesForTypes(vTypeNum)
-        val probInClasses =  vAttr.rankDistribution.zip(relativeSizeOfClasses).map(x => x._1 * x._2)
+        var probInClasses =  vAttr.rankDistribution.zip(relativeSizeOfClasses).map(x => x._1 * x._2)
+        
+        // sum of probInClasses should add up to 1
+        val sumProbInClasses = probInClasses.sum
+        probInClasses = probInClasses.map(x => x / sumProbInClasses)
 
         // For convenient reduce, it returns array of size of number of types, where each
         val probInClasses2dArray = Array.ofDim[Double](numTypes, numClasses)
