@@ -55,7 +55,7 @@ object EM extends Logging {
         val probInClasses2dArray = Array.ofDim[Double](numTypes, numClasses)
         probInClasses2dArray(vTypeNum) = probInClasses
 
-        println(s"sumProbInClasses=$sumProbInClasses")
+//        println(s"sumProbInClasses=$sumProbInClasses")
         println(s"After Obj #${v._1}, ProbInClasses:${probInClasses.mkString(" ")}")
 
         (v._1, probInClasses2dArray)
