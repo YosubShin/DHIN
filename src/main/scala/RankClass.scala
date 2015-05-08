@@ -97,7 +97,7 @@ object RankClass {
       println(s"Top elements for ${ResearchArea(i)}")
       for (j <- 0 until numTypes) {
         println(s"Top ${VertexType(j).toString}")
-        val joined = probInClassesForObjs.innerJoin(g.vertices)((vId, arr, vAttr) => {
+        val joined = probInClassesForObjs.innerJoin(ranks.vertices)((vId, arr, vAttr) => {
           (arr, vAttr)
         }).filter(v => {
           v._2._2.vType == VertexType.apply(j)
