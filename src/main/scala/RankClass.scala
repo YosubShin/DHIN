@@ -37,7 +37,7 @@ object RankClass {
 
     val numClasses = ResearchArea.values.size - 1
     val numTypes = VertexType.values.size
-    val numBuildNetworkIterations = 1
+    val numBuildNetworkIterations = 3
     val numEmIterations = 1
     val numPartitions = 16
     val numTop = 100
