@@ -40,7 +40,7 @@ object EM extends Logging {
         val vAttr = v._2
         val vTypeNum = vAttr.vType.id
         val relativeSizeOfClasses = relativeSizesOfClassesForTypes(vTypeNum)
-        val probInClasses =  vAttr.rankDistribution.zip(relativeSizeOfClasses).map(x => x._1 * x._2)
+        var probInClasses =  vAttr.rankDistribution.zip(relativeSizeOfClasses).map(x => x._1 * x._2)
 //        println(s"In iteration $iteration:")
 //        println(s"rankDistribution=${vAttr.rankDistribution.mkString(" ")}")
 //        println(s"relativeSizeOfClasses=${relativeSizeOfClasses.mkString(" ")}")
