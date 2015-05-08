@@ -48,8 +48,10 @@ object EM extends Logging {
 //        println(s"Before Obj #${v._1}, ProbInClasses:${probInClasses.mkString(" ")}")
 
         // sum of probInClasses should add up to 1
-//        val sumProbInClasses = probInClasses.sum
-//        probInClasses = probInClasses.map(x => x / sumProbInClasses)
+        val sumProbInClasses = probInClasses.sum
+        if (sumProbInClasses > 0) {
+          probInClasses = probInClasses.map(x => x / sumProbInClasses)
+        }
 
         // For convenient reduce, it returns array of size of number of types, where each
         val probInClasses2dArray = Array.ofDim[Double](numTypes, numClasses)
